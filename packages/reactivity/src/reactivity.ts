@@ -5,7 +5,7 @@ export const enum ReactiveFlags { // 对象
   IS_REACTIVE = "__v_isReactive",
 }
 const reactiveMap = new WeakMap()
-export function reactive(target) {
+export function reactive(target: object) {
   // reactive 只能处理对象类型的数据，不是对象不处理
   if (!isObject(target)) return target
 
