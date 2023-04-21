@@ -18,10 +18,13 @@
     const state = reactive(obj)
     console.log('state=>', state)
     effect(() => {
-      console.log('111=>', 111)
-      app.innerHTML = state.name + state.age
+      app.innerHTML = state.name
+      effect(() => {
+        app.innerHTML = state.address
+      })
+      app.innerHTML = state.age
     })
-    state.name = 'zhengsan'
+    state.name = 'zhangsan'
   </script>
 </body>
 

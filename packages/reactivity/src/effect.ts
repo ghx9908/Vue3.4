@@ -2,13 +2,16 @@ export let activeEffect = undefined;// 当前正在执行的effect 为了方便�
 
 export class ReactiveEffect {
   // 默认会将fn挂载到类的实例上
+  parent = undefined;
   constructor(public fn) { }
   run() {
     try {
+      this.parent = activeEffect; // 当前的effect就是他的父亲
       activeEffect = this; // 设置成正在激活的是当前effect
       return this.fn();
     } finally {
-      activeEffect = null
+      activeEffect = this.parent; // 执行完毕后还原activeEffect
+      this.parent = undefined;
     }
 
   }
