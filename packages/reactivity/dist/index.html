@@ -13,23 +13,14 @@
 
   <script type="module">
     // import { reactive, effect } from '../../../node_modules/@vue/reactivity/dist/reactivity.esm-browser.js'
-    import { reactive } from './reactivity.js'
+    import { reactive, effect } from './reactivity.js'
     const obj = { name: 'ghx', age: 22 }
-    const state1 = reactive(obj)
-    // const state2 = reactive(obj)
-    // console.log('state=>', state1 === state2)
-    const state3 = reactive(state1)
-    console.log('state3=>', state3)
-    console.log('state=>', state1 === state3)
-    // effect(() => {
-    //   console.log('111=>', 111)
-    //   app.innerHTML = state.name + state.age
-    // })
-    // setTimeout(() => {
-    //   state.name = 'ghx01'
-    //   console.log('22=>', 22)
-    // }, 2000)
-
+    const state = reactive(obj)
+    console.log('state=>', state)
+    effect(() => {
+      console.log('111=>', 111)
+      app.innerHTML = state.name + state.age
+    })
 
   </script>
 </body>

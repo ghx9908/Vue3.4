@@ -1,10 +1,20 @@
 // packages/reactivity/src/effect.ts
-function effect() {
+var ReactiveEffect = class {
+  constructor(fn) {
+    this.fn = fn;
+  }
+  run() {
+    return this.fn();
+  }
+};
+function effect(fn) {
+  const _effect = new ReactiveEffect(fn);
+  _effect.run();
 }
 
 // packages/shared/src/index.ts
 var isObject = (value) => {
-  return value != null && typeof value === "object";
+  return value !== null && typeof value === "object";
 };
 
 // packages/reactivity/src/handler.ts
@@ -41,6 +51,7 @@ function reactive(target) {
   return proxy;
 }
 export {
+  ReactiveEffect,
   ReactiveFlags,
   effect,
   reactive
