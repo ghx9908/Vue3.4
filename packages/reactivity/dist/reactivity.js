@@ -1,5 +1,12 @@
 // packages/reactivity/src/effect.ts
 var activeEffect = void 0;
+function cleanupEffect(effect2) {
+  const { deps } = effect2;
+  for (let i = 0; i < deps.length; i++) {
+    deps[i].delete(effect2);
+  }
+  effect2.deps.length = 0;
+}
 var ReactiveEffect = class {
   constructor(fn) {
     this.fn = fn;
@@ -14,6 +21,7 @@ var ReactiveEffect = class {
       }
       this.parent = activeEffect;
       activeEffect = this;
+      cleanupEffect(this);
       return this.fn();
     } finally {
       activeEffect = this.parent;
@@ -61,11 +69,7 @@ function track(target, type, key) {
     if (!dep) {
       depsMap.set(key, dep = /* @__PURE__ */ new Set());
     }
-    let shouldTrack = !dep.has(activeEffect);
-    if (shouldTrack) {
-      dep.add(activeEffect);
-      activeEffect.deps.push(dep);
-    }
+    trackEffects(dep);
   }
 }
 function trigger(target, type, key, newValue, oldValue) {
@@ -74,9 +78,24 @@ function trigger(target, type, key, newValue, oldValue) {
     return;
   }
   const effects = depsMap.get(key);
-  effects && effects.forEach((effect2) => {
-    effect2.run();
-  });
+  triggerEffects(effects);
+}
+function triggerEffects(effects) {
+  if (effects) {
+    effects = [...effects];
+    effects.forEach((effect2) => {
+      if (activeEffect !== effect2) {
+        effect2.run();
+      }
+    });
+  }
+}
+function trackEffects(dep) {
+  let shouldTrack = !dep.has(activeEffect);
+  if (shouldTrack) {
+    dep.add(activeEffect);
+    activeEffect.deps.push(dep);
+  }
 }
 
 // packages/reactivity/src/reactivity.ts

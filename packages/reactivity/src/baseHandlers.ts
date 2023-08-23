@@ -40,11 +40,8 @@ export function track(target, type, key) {
     if (!dep) {
       depsMap.set(key, (dep = new Set())) // 初始化该属性的依赖effect {对象：{ 属性 :[ dep, dep ]}}
     }
-    let shouldTrack = !dep.has(activeEffect) //看是否应该被收集
-    if (shouldTrack) {
-      dep.add(activeEffect); // 把当前活跃的efftct添加到属性的set种
-      activeEffect.deps.push(dep); //  activeEffect收集依赖属性所有的 Set([effect1...]) ，这样后续可以用于清理
-    }
+    trackEffects(dep); // 收集set中
+
   }
 }
 
@@ -55,9 +52,28 @@ export function trigger(target, type, key?, newValue?, oldValue?) {
     return
   }
   const effects = depsMap.get(key); // 查看该属性有没有被effect收集 | 查看该属性收集的effect
-  effects && effects.forEach(effect => {// 执行该属性收集的所有effect
-    effect.run();
-  })
+  triggerEffects(effects);
 }
 
 
+
+export function triggerEffects(effects) {
+  if (effects) {
+    effects = [...effects]; // vue2中的是数组，先拷贝在魂环
+    effects.forEach((effect) => {
+      // 当前正在执行的和现在要执行的是同一个我就屏蔽掉
+      if (activeEffect !== effect) {
+        effect.run();
+      }
+    });
+  }
+}
+
+
+export function trackEffects(dep) {
+  let shouldTrack = !dep.has(activeEffect) //看是否应该被收集
+  if (shouldTrack) {
+    dep.add(activeEffect); // 把当前活跃的efftct添加到属性的set种
+    activeEffect.deps.push(dep); //  activeEffect收集依赖属性所有的 Set([effect1...]) ，这样后续可以用于清理
+  }
+}
