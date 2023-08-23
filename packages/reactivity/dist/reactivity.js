@@ -1,10 +1,19 @@
 // packages/reactivity/src/effect.ts
+var activeEffect = void 0;
 var ReactiveEffect = class {
   constructor(fn) {
     this.fn = fn;
+    this.parent = void 0;
   }
   run() {
-    return this.fn();
+    try {
+      this.parent = activeEffect;
+      activeEffect = this;
+      return this.fn();
+    } finally {
+      activeEffect = this.parent;
+      this.parent = void 0;
+    }
   }
 };
 function effect(fn) {
@@ -53,6 +62,7 @@ function reactive(target) {
 export {
   ReactiveEffect,
   ReactiveFlags,
+  activeEffect,
   effect,
   reactive
 };

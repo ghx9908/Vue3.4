@@ -5,7 +5,6 @@ export const muableHandlers: ProxyHandler<object> = {
   // receiver相当于代理对象
   get(target, key, receiver) {
     //取值的时候，让属性和effect产生关系
-    console.log('activeEffect 依赖收集=>', activeEffect)
     if (key === ReactiveFlags.IS_REACTIVE) {
       return true;
     }

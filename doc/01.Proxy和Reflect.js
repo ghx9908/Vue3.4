@@ -10,7 +10,7 @@ let person = {
 }
 const proxyPerson = new Proxy(person, {
   get(target, key, receiver) {
-    console.log("获取" + key)
+    // console.log("获取" + key)
     // return target[key]
     //为了解决this问题，增加一层映射
     return Reflect.get(target, key, receiver)
