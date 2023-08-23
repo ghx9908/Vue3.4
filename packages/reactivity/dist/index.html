@@ -17,20 +17,23 @@
     let obj = { name: 'zs', age: 19 }
     // 正常写法
 
+
     const state1 = reactive(obj)
-    console.log('state1=>', state1)
 
-    // 传入非对象
-    const state2 = reactive('hello')
-    console.log('state2=>', state2)
+    effect(() => {
+      console.log('state1.name=>', state1.name)
+      effect(() => {
+        console.log('state1.age=>', state1.age)
+      })
+    })
+    setTimeout(() => {
+      state1.name = 'ls'
+    }, 1000)
 
-    // 已经代理过
-    const state3 = reactive(state1)
-    console.log('state3=>', state3)
+    setTimeout(() => {
+      state1.age = 20
+    }, 2000)
 
-    // 同一个对象被代理多次
-    const state4 = reactive(obj)
-    console.log('state4=>', state4)
 
 
   </script>

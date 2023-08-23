@@ -3,10 +3,15 @@ var activeEffect = void 0;
 var ReactiveEffect = class {
   constructor(fn) {
     this.fn = fn;
+    this.active = true;
+    this.deps = [];
     this.parent = void 0;
   }
   run() {
     try {
+      if (!this.active) {
+        return this.fn();
+      }
       this.parent = activeEffect;
       activeEffect = this;
       return this.fn();
@@ -26,19 +31,53 @@ var isObject = (value) => {
   return value !== null && typeof value === "object";
 };
 
-// packages/reactivity/src/handler.ts
+// packages/reactivity/src/baseHandlers.ts
 var muableHandlers = {
   get(target, key, receiver) {
     if (key === "__v_isReactive" /* IS_REACTIVE */) {
       return true;
     }
-    return Reflect.get(target, key, receiver);
+    const res = Reflect.get(target, key, receiver);
+    track(target, "get", key);
+    return res;
   },
   set(target, key, value, receiver) {
-    Reflect.set(target, key, value, receiver);
-    return true;
+    let oldValue = target[key];
+    const result = Reflect.set(target, key, value, receiver);
+    if (oldValue !== value) {
+      trigger(target, "set", key, value, oldValue);
+    }
+    return result;
   }
 };
+var targetMap = /* @__PURE__ */ new WeakMap();
+function track(target, type, key) {
+  if (activeEffect) {
+    let depsMap = targetMap.get(target);
+    if (!depsMap) {
+      targetMap.set(target, depsMap = /* @__PURE__ */ new Map());
+    }
+    let dep = depsMap.get(key);
+    if (!dep) {
+      depsMap.set(key, dep = /* @__PURE__ */ new Set());
+    }
+    let shouldTrack = !dep.has(activeEffect);
+    if (shouldTrack) {
+      dep.add(activeEffect);
+      activeEffect.deps.push(dep);
+    }
+  }
+}
+function trigger(target, type, key, newValue, oldValue) {
+  const depsMap = targetMap.get(target);
+  if (!depsMap) {
+    return;
+  }
+  const effects = depsMap.get(key);
+  effects && effects.forEach((effect2) => {
+    effect2.run();
+  });
+}
 
 // packages/reactivity/src/reactivity.ts
 var ReactiveFlags = /* @__PURE__ */ ((ReactiveFlags2) => {

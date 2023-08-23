@@ -1,5 +1,5 @@
 import { isObject } from "@vue/shared";
-import { muableHandlers } from "./handler";
+import { muableHandlers } from "./baseHandlers";
 
 export const enum ReactiveFlags { // 对象
   IS_REACTIVE = "__v_isReactive",
