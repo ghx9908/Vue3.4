@@ -28,10 +28,19 @@ var ReactiveEffect = class {
       this.parent = void 0;
     }
   }
+  stop() {
+    if (this.active) {
+      cleanupEffect(this);
+      this.active = false;
+    }
+  }
 };
 function effect(fn) {
   const _effect = new ReactiveEffect(fn);
   _effect.run();
+  const runner = _effect.run.bind(_effect);
+  runner.effect = _effect;
+  return runner;
 }
 
 // packages/shared/src/index.ts

@@ -28,7 +28,12 @@ export class ReactiveEffect {
       activeEffect = this.parent; // 执行完毕后还原activeEffect
       this.parent = undefined;
     }
-
+  }
+  stop() {// 停止依赖收集
+    if (this.active) {
+      cleanupEffect(this);
+      this.active = false
+    }
   }
 }
 
@@ -36,4 +41,8 @@ export function effect(fn) {
   // 创建一个响应式effect,并且让effect执行
   const _effect = new ReactiveEffect(fn);
   _effect.run();
+
+  const runner = _effect.run.bind(_effect);
+  runner.effect = _effect;
+  return runner; // 返回runner
 }
