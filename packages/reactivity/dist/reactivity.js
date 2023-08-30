@@ -8,8 +8,9 @@ function cleanupEffect(effect2) {
   effect2.deps.length = 0;
 }
 var ReactiveEffect = class {
-  constructor(fn) {
+  constructor(fn, scheduler) {
     this.fn = fn;
+    this.scheduler = scheduler;
     this.active = true;
     this.deps = [];
     this.parent = void 0;
@@ -35,8 +36,8 @@ var ReactiveEffect = class {
     }
   }
 };
-function effect(fn) {
-  const _effect = new ReactiveEffect(fn);
+function effect(fn, options = {}) {
+  const _effect = new ReactiveEffect(fn, options.scheduler);
   _effect.run();
   const runner = _effect.run.bind(_effect);
   runner.effect = _effect;
@@ -56,6 +57,9 @@ var muableHandlers = {
     }
     const res = Reflect.get(target, key, receiver);
     track(target, "get", key);
+    if (isObject(res)) {
+      return reactive(res);
+    }
     return res;
   },
   set(target, key, value, receiver) {
@@ -94,7 +98,11 @@ function triggerEffects(effects) {
     effects = [...effects];
     effects.forEach((effect2) => {
       if (activeEffect !== effect2) {
-        effect2.run();
+        if (effect2.scheduler) {
+          effect2.scheduler();
+        } else {
+          effect2.run();
+        }
       }
     });
   }

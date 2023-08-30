@@ -1,5 +1,6 @@
+import { isObject } from "@vue/shared";
 import { activeEffect } from "./effect";
-import { ReactiveFlags } from "./reactivity";
+import { ReactiveFlags, reactive } from "./reactivity";
 
 export const muableHandlers: ProxyHandler<object> = {
   // receiver相当于代理对象
@@ -11,6 +12,9 @@ export const muableHandlers: ProxyHandler<object> = {
     const res = Reflect.get(target, key, receiver);
 
     track(target, 'get', key);  // 依赖收集
+    if (isObject(res)) {
+      return reactive(res);
+    }
     return res
   },
   set(target, key, value, receiver) {
@@ -63,7 +67,11 @@ export function triggerEffects(effects) {
     effects.forEach((effect) => {
       // 当前正在执行的和现在要执行的是同一个我就屏蔽掉
       if (activeEffect !== effect) {
-        effect.run();
+        if (effect.scheduler) { // 如果有调度函数则执行调度函数
+          effect.scheduler()
+        } else {
+          effect.run();
+        }
       }
     });
   }

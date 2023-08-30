@@ -14,7 +14,7 @@ export class ReactiveEffect {
   deps = []; // 收集effect中使用到的属性
   // 默认会将fn挂载到类的实例上
   parent = undefined;
-  constructor(public fn) { }
+  constructor(public fn, public scheduler?) { }
   run() {
     try {
       if (!this.active) { // 不是激活状态
@@ -37,9 +37,9 @@ export class ReactiveEffect {
   }
 }
 
-export function effect(fn) {
+export function effect(fn, options: any = {}) {
   // 创建一个响应式effect,并且让effect执行
-  const _effect = new ReactiveEffect(fn);
+  const _effect = new ReactiveEffect(fn, options.scheduler);
   _effect.run();
 
   const runner = _effect.run.bind(_effect);
