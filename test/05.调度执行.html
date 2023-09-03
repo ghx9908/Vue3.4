@@ -12,28 +12,25 @@
   <div id="app"></div>
 
   <script type="module">
-    // vue -> runtime-dom -> runtime-core -> reactivity
-    // import { reactive, effect, watch, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-    import { reactive, effect, watch } from './reactivity.js'
+    // import { reactive, effect } from '../../../node_modules/@vue/reactivity/dist/reactivity.esm-browser.js'
+    import { reactive, effect } from './reactivity.js'
     let obj = { flag: true, name: 'zs', age: 19 }
     // 正常写法
 
 
     const state = reactive(obj)
-
-    // watch(() => state.name, () => {
-    //   document.body.innerHTML = state.name
-    // })
-    watch(state, () => {
+    const runner = effect(() => { // 副作用函数 (effect执行渲染了页面)
+      console.log('render')
       document.body.innerHTML = state.name
-    })
-
+    }, {
+      scheduler: () => {
+        console.log('111=>', 111)
+        runner()
+      }
+    });
     setTimeout(() => {
       state.name = 'ls'
     }, 1000)
-    setTimeout(() => {
-      state.name = 'wu'
-    }, 2000)
   </script>
 </body>
 

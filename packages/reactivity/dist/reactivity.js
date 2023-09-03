@@ -48,6 +48,9 @@ function effect(fn, options = {}) {
 var isObject = (value) => {
   return value !== null && typeof value === "object";
 };
+var isFunction = (value) => {
+  return typeof value === "function";
+};
 
 // packages/reactivity/src/baseHandlers.ts
 var muableHandlers = {
@@ -134,11 +137,65 @@ function reactive(target) {
   reactiveMap.set(target, proxy);
   return proxy;
 }
+function isReactive(value) {
+  return value["__v_isReactive" /* IS_REACTIVE */];
+}
+
+// packages/reactivity/src/apiWatch.ts
+function traverse(value, seen = /* @__PURE__ */ new Set()) {
+  if (!isObject(value)) {
+    return value;
+  }
+  if (seen.has(value)) {
+    return value;
+  }
+  seen.add(value);
+  for (const key in value) {
+    traverse(value[key], seen);
+  }
+  return value;
+}
+function watch(source, cb, options) {
+  return dowatch(source, cb, options);
+}
+function watchEffect(source, options) {
+  return dowatch(source, null, options);
+}
+function dowatch(source, cb, options) {
+  let getter;
+  if (isReactive(source)) {
+    getter = () => traverse(source);
+  } else if (isFunction(source)) {
+    getter = source;
+  }
+  let oldVal;
+  let clear;
+  let onCleanup = (fn) => {
+    clear = fn;
+  };
+  const job = () => {
+    if (cb) {
+      if (clear)
+        clear();
+      const newVal = effect2.run();
+      cb(newVal, oldVal, onCleanup);
+      oldVal = newVal;
+    } else {
+      effect2.run();
+    }
+  };
+  const effect2 = new ReactiveEffect(getter, job);
+  oldVal = effect2.run();
+}
 export {
   ReactiveEffect,
   ReactiveFlags,
   activeEffect,
+  dowatch,
   effect,
-  reactive
+  isReactive,
+  reactive,
+  watch,
+  watchEffect
 };
 //# sourceMappingURL=reactivity.js.map
