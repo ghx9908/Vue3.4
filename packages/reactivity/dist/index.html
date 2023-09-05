@@ -13,63 +13,34 @@
 
   <script type="module">
     // vue -> runtime-dom -> runtime-core -> reactivity
-    // import { reactive, effect, watch, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-    import { reactive, effect, watch, watchEffect } from './reactivity.js'
-    let obj = { flag: true, name: 'zs', age: 19 }
-    // 正常写法
+    // import { reactive, effect, watch, computed, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+    import { reactive, effect, watch, watchEffect, computed } from './reactivity.js'
+    const fullname = computed({
+      get() {
+        console.log('getter')
+        return state.firstname + state.lastname
+      },
+      set(val) { // 改计算属性可以导致修改其他属性
+        console.log(val)
+      }
+    })
+    const state = reactive({ firstname: 'a', lastname: 'b', fullname })
 
+    console.log('state=>', state)
+    console.log('fullname=>', fullname, fullname.value)
 
-    const state = reactive(obj)
+    // 计算属性的应用场景， 主要是根据其他的数据进行衍生数据的
+    // 计算属性默认是懒执行的，如果依赖的值不发生变化不会重新执行 dirty 缓存
+    // 计算属性的值自身无法修改
+    // 依赖的值变化了，后续再取值可以获取到新值
 
+    effect(() => {
+      app.innerHTML = state.fullname
+    })
 
-    // watch(state, (newVal, oldVal) => {
-    //   console.log('数据变化了', newVal, oldVal)
-    // }, { flush: 'sync' }); // 默认先标记成同步，后面说异步geng'xin
-    // state.name = 'lisi'
-    // console.log('数据变化outer')
-
-
-    // watchEffect(() => {
-    //   // 自动收集依赖
-    //   console.log('inner')
-    //   app.innerHTML = state.name
-    // }, { flush: 'sync' })
-    // state.name = 'lisi'
-    // console.log('数据变化outer')
-
-
-    // watch 大部分的场景可能是，监控数据变化，变化后发送请求
-    // 模拟一个输入框的场景， 百度搜索框
-    // 1 -> 发送请求  2s后才返回
-    // 2 -> 发送请求  1s后返回
-
-    // 以最终的1为准，实际上应该用2的结果
-
-    let timer = 14000;
-    function getData(data) {
-      return new Promise((resolve, reject) => {
-        setTimeout(() => {
-          resolve(data)
-        }, timer -= 1000)
-      })
-    }
-
-
-    // 什么是闭包?  我定义函数的作用域和执行函数的作用域不是同一个
-    watch(() => state.age, async function (newVal, oldVal, onCleanup) {
-      let flag = true
-      onCleanup(function () {
-        flag = false
-      })
-
-      let r = await getData(newVal);
-
-      flag && (app.innerHTML = r)
-    }, { flush: 'sync' })
-    // 模拟用户输入1234
-    state.age = 11; // 请求2s返回 100
-    state.age = 111; // 请求2s返回 200
-    state.age = 1111; // 请求2s返回 200
+    setTimeout(() => {
+      state.firstname = 'hello'
+    }, 1000)
   </script>
 </body>
 
