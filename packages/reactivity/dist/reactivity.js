@@ -99,6 +99,78 @@ var isFunction = (value) => {
 function isRef(value) {
   return !!(value && value.__v_isRef);
 }
+function toReactive(value) {
+  return isObject(value) ? reactive(value) : value;
+}
+var RefImpl = class {
+  constructor(rawValue, _shallow) {
+    this.rawValue = rawValue;
+    this._shallow = _shallow;
+    this.dep = /* @__PURE__ */ new Set();
+    this.__v_isRef = true;
+    this._value = _shallow ? rawValue : toReactive(rawValue);
+  }
+  get value() {
+    trackEffects(this.dep);
+    return this._value;
+  }
+  set value(newVal) {
+    if (newVal !== this.rawValue) {
+      this.rawValue = newVal;
+      this._value = this._shallow ? newVal : toReactive(newVal);
+      triggerEffects(this.dep);
+    }
+  }
+};
+function createRef(rawValue, shallow) {
+  return new RefImpl(rawValue, shallow);
+}
+function ref(value) {
+  return createRef(value, false);
+}
+function shallowRef(value) {
+  return createRef(value, true);
+}
+var ObjectRefImpl = class {
+  constructor(_object, _key) {
+    this._object = _object;
+    this._key = _key;
+    this.__v_isRef = true;
+  }
+  get value() {
+    return this._object[this._key];
+  }
+  set value(newVal) {
+    this._object[this._key] = newVal;
+  }
+};
+function toRef(object, key) {
+  return new ObjectRefImpl(object, key);
+}
+function toRefs(object) {
+  const ret = Array.isArray(object) ? new Array(object.length) : {};
+  for (const key in object) {
+    ret[key] = toRef(object, key);
+  }
+  return ret;
+}
+function proxyRefs(objectWithRefs) {
+  return new Proxy(objectWithRefs, {
+    get(target, key, receiver) {
+      let v = Reflect.get(target, key, receiver);
+      return v.__v_isRef ? v.value : v;
+    },
+    set(target, key, value, receiver) {
+      const oldValue = target[key];
+      if (oldValue.__v_isRef) {
+        oldValue.value = value;
+        return true;
+      } else {
+        return Reflect.set(target, key, value, receiver);
+      }
+    }
+  });
+}
 
 // packages/reactivity/src/baseHandlers.ts
 var muableHandlers = {
@@ -246,7 +318,14 @@ export {
   dowatch,
   effect,
   isReactive,
+  isRef,
+  proxyRefs,
   reactive,
+  ref,
+  shallowRef,
+  toReactive,
+  toRef,
+  toRefs,
   track,
   trackEffects,
   trigger,

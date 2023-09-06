@@ -45,3 +45,47 @@ export function shallowRef(value) {
   return createRef(value, true);
 }
 
+
+
+class ObjectRefImpl {
+  public __v_isRef = true
+  constructor(public _object, public _key) { }
+  get value() {
+    return this._object[this._key];
+  }
+  set value(newVal) {
+    this._object[this._key] = newVal;
+  }
+}
+export function toRef(object, key) { // 将响应式对象中的某个属性转化成ref
+  return new ObjectRefImpl(object, key);
+}
+
+
+
+export function toRefs(object) { // 将所有的属性转换成ref
+  const ret = Array.isArray(object) ? new Array(object.length) : {};
+  for (const key in object) {
+    ret[key] = toRef(object, key);
+  }
+  return ret;
+}
+
+
+export function proxyRefs(objectWithRefs) { // 代理的思想，如果是ref 则取ref.value
+  return new Proxy(objectWithRefs, {
+    get(target, key, receiver) {
+      let v = Reflect.get(target, key, receiver);
+      return v.__v_isRef ? v.value : v;
+    },
+    set(target, key, value, receiver) { // 设置的时候如果是ref,则给ref.value赋值
+      const oldValue = target[key];
+      if (oldValue.__v_isRef) {
+        oldValue.value = value;
+        return true
+      } else {
+        return Reflect.set(target, key, value, receiver)
+      }
+    }
+  })
+}
