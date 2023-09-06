@@ -14,32 +14,19 @@
   <script type="module">
     // vue -> runtime-dom -> runtime-core -> reactivity
     // import { reactive, effect, watch, computed, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-    import { reactive, effect, watch, watchEffect, computed } from './reactivity.js'
-    const fullname = computed({
-      get() {
-        console.log('getter')
-        return state.firstname + state.lastname
-      },
-      set(val) { // 改计算属性可以导致修改其他属性
-        console.log(val)
-      }
-    })
-    const state = reactive({ firstname: 'a', lastname: 'b', fullname })
+    import { reactive, effect, watch, watchEffect, computed, ref } from './reactivity.js'
 
-    console.log('state=>', state)
-    console.log('fullname=>', fullname, fullname.value)
 
-    // 计算属性的应用场景， 主要是根据其他的数据进行衍生数据的
-    // 计算属性默认是懒执行的，如果依赖的值不发生变化不会重新执行 dirty 缓存
-    // 计算属性的值自身无法修改
-    // 依赖的值变化了，后续再取值可以获取到新值
+    let flag = ref(true); // 装包，就是将变量在包装一层，里面还要增加依赖收集的功能
+
 
     effect(() => {
-      app.innerHTML = state.fullname
+      app.innerHTML = flag.value
     })
 
+
     setTimeout(() => {
-      state.firstname = 'hello'
+      flag.value = false
     }, 1000)
   </script>
 </body>
