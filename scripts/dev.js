@@ -1,7 +1,7 @@
 const { build } = require("esbuild")
 const { resolve } = require("path")
 const args = require("minimist")(process.argv.slice(2))
-
+console.log("args=>", args)
 const target = args._[0] || "reactivity"
 const format = args.f || "global"
 
@@ -16,8 +16,8 @@ const outputFormat = format.startsWith("global") // 输出的格式
 const outfile = resolve(
   // 输出的文件
   __dirname,
-  // `../packages/${target}/dist/${target}.${format}.js`
-  `../packages/${target}/dist/${target}.js`
+  `../packages/${target}/dist/${target}.${format}.js`
+  // `../packages/${target}/dist/${target}.js`
 )
 
 build({
