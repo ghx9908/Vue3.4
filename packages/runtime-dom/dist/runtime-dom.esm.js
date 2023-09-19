@@ -80,6 +80,9 @@ function patchAttr(el, key, value) {
 }
 
 // packages/shared/src/index.ts
+var isObject = (value) => {
+  return value !== null && typeof value === "object";
+};
 function isString(val) {
   return typeof val === "string";
 }
@@ -114,10 +117,33 @@ function createVNode(type, props, children = null) {
   return vnode;
 }
 
+// packages/runtime-core/src/h.ts
+function h(type, propsOrChildren, children) {
+  const l = arguments.length;
+  if (l === 2) {
+    if (isObject(propsOrChildren) && !Array.isArray(propsOrChildren)) {
+      if (isVNode(propsOrChildren)) {
+        return createVNode(type, null, [propsOrChildren]);
+      }
+      return createVNode(type, propsOrChildren);
+    } else {
+      return createVNode(type, null, propsOrChildren);
+    }
+  } else {
+    if (l > 3) {
+      children = Array.prototype.slice.call(arguments, 2);
+    } else if (l === 3 && isVNode(children)) {
+      children = [children];
+    }
+    return createVNode(type, propsOrChildren, children);
+  }
+}
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign({ patchProp }, nodeOps);
 export {
   createVNode,
+  h,
   isSameVnode,
   isVNode
 };
