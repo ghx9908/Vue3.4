@@ -79,6 +79,46 @@ function patchAttr(el, key, value) {
   }
 }
 
+// packages/shared/src/index.ts
+function isString(val) {
+  return typeof val === "string";
+}
+
+// packages/runtime-core/src/createVNode.ts
+function isVNode(val) {
+  return !!(val && val.__v_isVNode);
+}
+function isSameVnode(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key;
+}
+function createVNode(type, props, children = null) {
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
+  const vnode = {
+    shapeFlag,
+    __v_isVNode: true,
+    type,
+    props,
+    key: props && props.key,
+    el: null,
+    children
+  };
+  if (children) {
+    let type2 = 0;
+    if (Array.isArray(children)) {
+      type2 = 16 /* ARRAY_CHILDREN */;
+    } else {
+      type2 = 8 /* TEXT_CHILDREN */;
+    }
+    vnode.shapeFlag |= type2;
+  }
+  return vnode;
+}
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign({ patchProp }, nodeOps);
+export {
+  createVNode,
+  isSameVnode,
+  isVNode
+};
 //# sourceMappingURL=runtime-dom.esm.js.map
