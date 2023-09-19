@@ -45,9 +45,14 @@ export function createRenderer(options) {
       // diff算法
     }
   }
+
+  const unmount = (vnode) => { hostRemove(vnode.el) }
+
   const render = (vnode, container) => {
     if (vnode == null) {
-      if (container._vnode) { } // 卸载
+      if (container._vnode) {
+        unmount(container._vnode); // 找到对应的真实节点将其卸载
+      } // 卸载
     } else {
       patch(container._vnode || null, vnode, container); // 初始化和更新
     }
@@ -57,3 +62,9 @@ export function createRenderer(options) {
     render
   }
 }
+
+// 卸载
+// createRenderer(renderOptions).render(null,document.getElementById('app'));
+
+
+

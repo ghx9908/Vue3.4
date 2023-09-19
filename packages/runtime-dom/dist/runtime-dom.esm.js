@@ -139,12 +139,77 @@ function h(type, propsOrChildren, children) {
   }
 }
 
+// packages/runtime-core/src/renderer.ts
+function createRenderer(options) {
+  const {
+    insert: hostInsert,
+    remove: hostRemove,
+    patchProp: hostPatchProp,
+    createElement: hostCreateElement,
+    createText: hostCreateText,
+    setText: hostSetText,
+    setElementText: hostSetElementText,
+    parentNode: hostParentNode,
+    nextSibling: hostNextSibling
+  } = options;
+  const mountChildren = (children, container) => {
+    for (let i = 0; i < children.length; i++) {
+      patch(null, children[i], container);
+    }
+  };
+  const mountElement = (vnode, container) => {
+    const { type, props, shapeFlag } = vnode;
+    let el = vnode.el = hostCreateElement(type);
+    if (props) {
+      for (const key in props) {
+        hostPatchProp(el, key, null, props[key]);
+      }
+    }
+    if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+      hostSetElementText(el, vnode.children);
+    } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+      mountChildren(vnode.children, el);
+    }
+    hostInsert(el, container);
+  };
+  const patch = (n1, n2, container) => {
+    if (n1 == n2) {
+      return;
+    }
+    if (n1 == null) {
+      mountElement(n2, container);
+    } else {
+    }
+  };
+  const unmount = (vnode) => {
+    hostRemove(vnode.el);
+  };
+  const render2 = (vnode, container) => {
+    if (vnode == null) {
+      if (container._vnode) {
+        unmount(container._vnode);
+      }
+    } else {
+      patch(container._vnode || null, vnode, container);
+    }
+    container._vnode = vnode;
+  };
+  return {
+    render: render2
+  };
+}
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign({ patchProp }, nodeOps);
+var render = (vnode, container) => {
+  createRenderer(renderOptions).render(vnode, container);
+};
 export {
+  createRenderer,
   createVNode,
   h,
   isSameVnode,
-  isVNode
+  isVNode,
+  render
 };
 //# sourceMappingURL=runtime-dom.esm.js.map
