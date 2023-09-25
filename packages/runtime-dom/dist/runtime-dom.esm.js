@@ -157,6 +157,11 @@ function createRenderer(options) {
       patch(null, children[i], container);
     }
   };
+  const unmountChildren = (children) => {
+    for (let i = 0; i < children.length; i++) {
+      unmount(children[i]);
+    }
+  };
   const mountElement = (vnode, container) => {
     const { type, props, shapeFlag } = vnode;
     let el = vnode.el = hostCreateElement(type);
@@ -172,6 +177,51 @@ function createRenderer(options) {
     }
     hostInsert(el, container);
   };
+  const patchProps = (oldProps, newProps, el) => {
+    for (let key in newProps) {
+      hostPatchProp(el, key, oldProps[key], newProps[key]);
+    }
+    for (let key in oldProps) {
+      if (!(key in newProps)) {
+        hostPatchProp(el, key, oldProps[key], null);
+      }
+    }
+  };
+  const patchChildren = (n1, n2, el) => {
+    const c1 = n1 && n1.children;
+    let c2 = n2.children;
+    let prevShapeFlag = n1.shapeFlag;
+    let shapeFlag = n2.shapeFlag;
+    if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+      if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+        unmountChildren(c1);
+      }
+      if (c1 !== c2) {
+        hostSetElementText(el, c2);
+      }
+    } else {
+      if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+        } else {
+          unmountChildren(c1);
+        }
+      } else {
+        if (prevShapeFlag & 8 /* TEXT_CHILDREN */) {
+          hostSetElementText(el, "");
+        }
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          mountChildren(c2, el);
+        }
+      }
+    }
+  };
+  const patchElement = (n1, n2) => {
+    let el = n2.el = n1.el;
+    const oldProps = n1.props || {};
+    const newProps = n2.props || {};
+    patchProps(oldProps, newProps, el);
+    patchChildren(n1, n2, el);
+  };
   const patch = (n1, n2, container) => {
     if (n1 == n2) {
       return;
@@ -183,6 +233,7 @@ function createRenderer(options) {
     if (n1 == null) {
       mountElement(n2, container);
     } else {
+      patchElement(n1, n2);
     }
   };
   const unmount = (vnode) => {
