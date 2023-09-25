@@ -3,7 +3,7 @@ import { ShapeFlags, isString } from "@vue/shared";
 export function isVNode(val) {
   return !!(val && val.__v_isVNode);
 }
-export function isSameVnode(n1, n2) {
+export function isSameVNodeType(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key;
 }
 export function createVNode(type, props, children = null) {

@@ -1,5 +1,5 @@
 import { ShapeFlags } from "@vue/shared";
-
+import { isSameVNodeType } from "./createVNode";
 export function createRenderer(options) {
   const {
     insert: hostInsert,
@@ -34,11 +34,19 @@ export function createRenderer(options) {
     hostInsert(el, container); // 插入到容器中
   }
 
+
+  // 元素的渲染
   const patch = (n1, n2, container) => {
     // 初始化和diff算法都在这里喲
     if (n1 == n2) {
       return
     }
+    // 两个不同虚拟节点不需要进行比较，直接移除老节点，将新的虚拟节点渲染成真实DOM进行挂载即可
+    if(n1 && !isSameVNodeType(n1,n2)){ // 有n1 是n1和n2不是同一个节点
+      unmount(n1)
+      n1 = null
+  }
+
     if (n1 == null) { // 初始化的情况
       mountElement(n2, container);
     } else {

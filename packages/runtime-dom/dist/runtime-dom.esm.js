@@ -91,7 +91,7 @@ function isString(val) {
 function isVNode(val) {
   return !!(val && val.__v_isVNode);
 }
-function isSameVnode(n1, n2) {
+function isSameVNodeType(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key;
 }
 function createVNode(type, props, children = null) {
@@ -176,6 +176,10 @@ function createRenderer(options) {
     if (n1 == n2) {
       return;
     }
+    if (n1 && !isSameVNodeType(n1, n2)) {
+      unmount(n1);
+      n1 = null;
+    }
     if (n1 == null) {
       mountElement(n2, container);
     } else {
@@ -208,7 +212,7 @@ export {
   createRenderer,
   createVNode,
   h,
-  isSameVnode,
+  isSameVNodeType,
   isVNode,
   render
 };
