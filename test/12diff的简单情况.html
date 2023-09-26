@@ -12,19 +12,15 @@
     <div id="app"></div>
     <script type="module">
         import { h, render } from './runtime-dom.esm.js'
-        const VDom1 = h('div', [
-            h('li', { key: 'a' }, 'a'),
-            h('li', { key: 'b' }, 'b'),
-            h('li', { key: 'c' }, 'c')
+        const VDom1 = h('div', { key: 'd' }, [
+            h('div', { key: 'd' }, 'd'),
+            h('div', { key: 'e' }, 'e'),
+            h('div', { key: 'a' }, 'a'),
+            h('div', { key: 'a' }, 'b'),
+            h('div', { key: 'c' }, 'c'),
         ])
-        const VDom2 = h('div', [
-            h('li', { key: 'a' }, 'a'),
-            h('li', { key: 'b' }, 'b'),
-            h('li', { key: 'c' }, 'c'),
-            h('li', { key: 'd' }, 'd'),
-            h('li', { key: 'e' }, 'e')
-        ])
-
+        const VDom2 =
+            h('div', { key: 'd', style: { color: 'blue' } }, 'p')
         render(VDom1, app);
 
         setTimeout(() => {

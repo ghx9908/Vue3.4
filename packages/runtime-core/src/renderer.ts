@@ -26,7 +26,7 @@ export function createRenderer(options) {
       unmount(children[i]);
     }
   };
-  const mountElement = (vnode, container) => {
+  const mountElement = (vnode, container, anchor) => {
     const { type, props, shapeFlag } = vnode
     let el = vnode.el = hostCreateElement(type); // 创建真实元素，挂载到虚拟节点上
     if (props) { // 处理属性
@@ -39,7 +39,7 @@ export function createRenderer(options) {
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) { // 多个儿子
       mountChildren(vnode.children, el);
     }
-    hostInsert(el, container); // 插入到容器中
+    hostInsert(el, container, anchor); // 插入到容器中
   }
 
   const patchProps = (oldProps, newProps, el) => {
@@ -54,6 +54,79 @@ export function createRenderer(options) {
       }
     }
   };
+  /**
+   * 
+   * @param c1 VNode1 Childen Arr 旧的
+   * @param c2 VNode2 Childen Arr 新的
+   * @param el 挂在的元素  node1
+   */
+  const patchKeyedChildren = (c1, c2, el) => {
+    let i = 0; // 头部索引
+    let e1 = c1.length - 1;
+    let e2 = c2.length - 1;
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i];
+      const n2 = c2[i];
+      if (isSameVNodeType(n1, n2)) {
+        patch(n1, n2, el);
+      } else {
+        break;
+      }
+      i++;
+    }
+
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1];
+      const n2 = c2[e2];
+      if (isSameVNodeType(n1, n2)) {
+        patch(n1, n2, el);
+      } else {
+        break;
+      }
+      e1--;
+      e2--;
+    }
+    // i > e1 说明新的比老的长，有新增的逻辑
+    if (i > e1) {
+      if (i <= e2) {
+        // i - e2之间为新增的部分
+        while (i <= e2) {
+          // 如果e2 后面呢没有值，说明是向后插入
+          // 如果e2 后面的有值， 说明是往前比较的，肯定是向前插入
+          const nextPos = e2 + 1;
+          const anchor = c2[nextPos]?.el;
+          patch(null, c2[i], el, anchor); // 如何选择锚点值
+          i++;
+        }
+      }
+    } else if (i > e2) {
+      // 老的多新的少
+      while (i <= e1) {
+        // 如果e2 后面呢没有值，说明是向后插入
+        // 如果e2 后面的有值， 说明是往前比较的，肯定是向前插入
+        unmount(c1[i]); // 如何选择锚点值
+        i++;
+      }
+    }
+
+    // i = 0;  e1 = 8 ; e2 = 7
+    // a b c (d e h) q f g
+    // a b c (m n)   q f g
+    // i = 3 e1 = 5 e2 = 4
+
+    // a , b , c          i e1  e2
+    // a , b , c ,d,  e  3， 2， 4
+    //   a , b , c
+    //d ,a , b , c        0, -1， 0
+
+    // a , b ,c ,d ,e     i  e1  e2
+    // a,  b ,c           3  4   2
+
+    // d ,e , a, b , c    0   1  -1
+    // a, b , c
+
+
+  }
 
 
   const patchChildren = (n1, n2, el) => {
@@ -96,14 +169,14 @@ export function createRenderer(options) {
         // 旧得为数组 新的为数组
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
           // diff算法
-          // patchKeyedChildren(c1, c2, el);
+          patchKeyedChildren(c1, c2, el);
         } else {
           //  旧的是数组， 新的空 卸载
           unmountChildren(c1);
         }
       } else {
         // 旧的为字符或者空  新的为数组或者空
-
+        patchKeyedChildren(c1, c2, el);
         // 旧的的是文本  && 新的是数组或者空 移除旧的 挂在新的
         if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
           hostSetElementText(el, "");
@@ -128,7 +201,7 @@ export function createRenderer(options) {
 
 
   // 元素的渲染
-  const patch = (n1, n2, container) => {
+  const patch = (n1, n2, container, anchor = null) => {
     // 初始化和diff算法都在这里喲
     if (n1 == n2) {
       return
@@ -140,7 +213,7 @@ export function createRenderer(options) {
     }
 
     if (n1 == null) { // 初始化的情况
-      mountElement(n2, container);
+      mountElement(n2, container, anchor);
     } else {
       // diff算法
       patchElement(n1, n2); // 比较两个元素
