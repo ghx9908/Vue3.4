@@ -4,6 +4,8 @@ import {
   Fragment,
   Text,
 } from "./createVNode";
+import { createInstance, setupComponent } from "./component";
+import { ReactiveEffect } from "@vue/reactivity";
 export function createRenderer(options) {
   const {
     insert: hostInsert,
@@ -268,6 +270,42 @@ export function createRenderer(options) {
     }
   }
 
+  function setupRenderEffect(instance, container) {
+    const componentUpdateFn = () => {
+      if (!instance.isMounted) {
+        // 初次渲染
+        const subTree = instance.render.call(instance.proxy, instance.proxy);
+        instance.subTree = subTree;
+        patch(null, subTree, container);
+        instance.isMounted = true;
+      } else {
+        const subTree = instance.render.call(instance.proxy, instance.proxy);
+        patch(instance.subTree, subTree, container);
+        instance.subTree = subTree;
+      }
+    };
+    const effect = new ReactiveEffect(componentUpdateFn)
+    const update = instance.update = effect.run.bind(effect);
+    update();
+  }
+
+  function mountComponent(n2, container) {
+    // 1) 给组件生成一个实例 instance
+    const instance = (n2.component = createInstance(n2));
+    // 2) 初始化实例属性 props attrs slots
+    setupComponent(instance);
+    // 3) 创建渲染effect
+    setupRenderEffect(instance, container);
+    // 3) 生成一个effect 并且调用渲染
+  }
+  const processComponent = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      mountComponent(n2, container);
+    } else {
+      // 组件更新逻辑
+    }
+  }
+
   // 元素的渲染
   const patch = (n1, n2, container, anchor = null) => {
     // 初始化和diff算法都在这里喲
@@ -291,6 +329,8 @@ export function createRenderer(options) {
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
           processElement(n1, n2, container, anchor); // 之前处理元素的逻辑
+        } else if (shapeFlag & ShapeFlags.COMPONENT) { // 组建的渲染
+          processComponent(n1, n2, container, anchor)
         }
     }
   }

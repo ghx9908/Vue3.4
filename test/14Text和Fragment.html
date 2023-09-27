@@ -14,15 +14,12 @@
         import { h, render, Text, Fragment } from './runtime-dom.esm.js'
         // import { createRenderer, h, render, Text, Fragment } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
         // const VNode = h(Text, 'zs')
-        const VueComponent = {
-            data() {
-                return { age: 13 }
-            },
-            render() {
-                return h('p', [h(Text, "I'm Zan San"), h('span', this.age + '')])
-            }
-        }
-        render(h(VueComponent), app);
+        const VNode = h(Fragment, [h(Text, 'hello'), h(Text, 'zs')])
+        render(VNode, app);
+
+
+
+
     </script>
 </body>
 
