@@ -1,5 +1,9 @@
 import { ShapeFlags } from "@vue/shared";
-import { isSameVNodeType } from "./createVNode";
+import {
+  isSameVNodeType,
+  Fragment,
+  Text,
+} from "./createVNode";
 export function createRenderer(options) {
   const {
     insert: hostInsert,
@@ -161,8 +165,6 @@ export function createRenderer(options) {
         patch(prevChild, c2[newIndex], el); // 只是比较了属性，还需要移动位置
       }
     }
-
-
   }
 
 
@@ -237,6 +239,35 @@ export function createRenderer(options) {
   }
 
 
+  // 处理文本
+  function processText(n1, n2, container) {
+    if (n1 == null) {
+      hostInsert((n2.el = hostCreateText(n2.children)), container);
+    } else {
+      let el = (n2.el = n1.el);
+      if (n2.children != n1.children) {
+        hostSetText(el, n2.children);
+      }
+    }
+  }
+
+  const processFragment = (n1, n2, container) => {
+    if (n1 == null) {
+      mountChildren(n2.children, container);
+    } else {
+      patchChildren(n1, n2, container);
+    }
+  }
+
+  function processElement(n1, n2, container, anchor) {
+    if (n1 == null) {
+      // 初始化逻辑
+      mountElement(n2, container, anchor);
+    } else {
+      patchElement(n1, n2);
+    }
+  }
+
   // 元素的渲染
   const patch = (n1, n2, container, anchor = null) => {
     // 初始化和diff算法都在这里喲
@@ -244,20 +275,33 @@ export function createRenderer(options) {
       return
     }
     // 两个不同虚拟节点不需要进行比较，直接移除老节点，将新的虚拟节点渲染成真实DOM进行挂载即可
-    if (n1 && !isSameVNodeType(n1, n2)) { // 有n1 是n1和n2不是同一个节点
+    if (n1 && !isSameVNodeType(n1, n2)) { // 有n1 但是n1和n2不是同一个节点
       unmount(n1)
       n1 = null
     }
 
-    if (n1 == null) { // 初始化的情况
-      mountElement(n2, container, anchor);
-    } else {
-      // diff算法
-      patchElement(n1, n2); // 比较两个元素
+    const { type, shapeFlag } = n2;
+    switch (type) {
+      case Text:
+        processText(n1, n2, container); // 处理文本
+        break;
+      case Fragment:
+        processFragment(n1, n2, container); // 处理fragment
+        break;
+      default:
+        if (shapeFlag & ShapeFlags.ELEMENT) {
+          processElement(n1, n2, container, anchor); // 之前处理元素的逻辑
+        }
     }
   }
 
-  const unmount = (vnode) => { hostRemove(vnode.el) }
+  const unmount = (vnode) => {
+    if (vnode.type === Fragment) {
+      return unmountChildren(vnode.children)
+    }
+    hostRemove(vnode.el)
+
+  }
 
   const render = (vnode, container) => {
     if (vnode == null) {
