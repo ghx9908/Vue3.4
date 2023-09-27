@@ -64,6 +64,9 @@ export function createRenderer(options) {
     let i = 0; // 头部索引
     let e1 = c1.length - 1;
     let e2 = c2.length - 1;
+    // 1. sync from start
+    // (a b) c
+    // (a b) d e
     while (i <= e1 && i <= e2) {
       const n1 = c1[i];
       const n2 = c2[i];
@@ -75,6 +78,9 @@ export function createRenderer(options) {
       i++;
     }
 
+    // 2. sync from end
+    // a (b c)
+    // d e (b c)
     while (i <= e1 && i <= e2) {
       const n1 = c1[e1];
       const n2 = c2[e2];
@@ -86,9 +92,18 @@ export function createRenderer(options) {
       e1--;
       e2--;
     }
+
+    // 3. common sequence + mount
+    // (a b)
+    // (a b) c
+    // i = 2, e1 = 1, e2 = 2
+    // (a b)
+    // c (a b)
+    // i = 0, e1 = -1, e2 = 0
     // i > e1 说明新的比老的长，有新增的逻辑
-    if (i > e1) {
-      if (i <= e2) {
+
+    if (i > e1) {// 说明有新增 
+      if (i <= e2) { // 表示有新增的部分
         // i - e2之间为新增的部分
         while (i <= e2) {
           // 如果e2 后面呢没有值，说明是向后插入
@@ -99,6 +114,13 @@ export function createRenderer(options) {
           i++;
         }
       }
+      // 4. common sequence + unmount
+      // (a b) c
+      // (a b)
+      // i = 2, e1 = 2, e2 = 1
+      // a (b c)
+      // (b c)
+      // i = 0, e1 = 0, e2 = -1
     } else if (i > e2) {
       // 老的多新的少
       while (i <= e1) {
@@ -109,21 +131,36 @@ export function createRenderer(options) {
       }
     }
 
-    // i = 0;  e1 = 8 ; e2 = 7
-    // a b c (d e h) q f g
-    // a b c (m n)   q f g
-    // i = 3 e1 = 5 e2 = 4
+    // 5. unknown sequence
+    // a b [c d e] f g
+    // a b [e c d h] f g
+    // i = 2, e1 = 4, e2 = 5
+    let s1 = i;
+    let s2 = i;
+    // 将新的元素做成一个映射表，去老的里面找
+    const keyToNewIndexMap = new Map();
+    for (let i = s2; i <= e2; i++) {
+      const nextChild = c2[i];
+      keyToNewIndexMap.set(nextChild.key, i); // 不写key就是undefined
+    }
+    // 去老的里面找，看在新的里面有没有，如果没有，说明老的被删除掉了
 
-    // a , b , c          i e1  e2
-    // a , b , c ,d,  e  3， 2， 4
-    //   a , b , c
-    //d ,a , b , c        0, -1， 0
+    const toBePatched = e2 - s2 + 1;
+    const newIndexToOldMapIndex = new Array(toBePatched).fill(0);
 
-    // a , b ,c ,d ,e     i  e1  e2
-    // a,  b ,c           3  4   2
-
-    // d ,e , a, b , c    0   1  -1
-    // a, b , c
+    for (let i = s1; i <= e1; i++) {
+      const prevChild = c1[i];
+      let newIndex = keyToNewIndexMap.get(prevChild.key); // 获取新的索引
+      if (newIndex == undefined) {
+        unmount(prevChild); // 老的有 新的没有直接删除
+      } else {
+        // a b c d
+        // b a e f
+        newIndexToOldMapIndex[newIndex - s2] = i + 1;
+        //老的里面有 新的里面也有，那就需要做diff算法，比较这两个节点的属性差异和儿子的区别
+        patch(prevChild, c2[newIndex], el); // 只是比较了属性，还需要移动位置
+      }
+    }
 
 
   }
