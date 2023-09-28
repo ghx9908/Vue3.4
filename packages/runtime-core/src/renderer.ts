@@ -6,6 +6,7 @@ import {
 } from "./createVNode";
 import { createInstance, setupComponent } from "./component";
 import { ReactiveEffect } from "@vue/reactivity";
+import { getSequence } from "./seq";
 export function createRenderer(options) {
   const {
     insert: hostInsert,
@@ -167,19 +168,25 @@ export function createRenderer(options) {
         patch(prevChild, c2[newIndex], el); // 只是比较了属性，还需要移动位置
       }
     }
-    console.log('newIndexToOldMapIndex=>',newIndexToOldMapIndex)
-
+    // console.log('newIndexToOldMapIndex=>', newIndexToOldMapIndex)
+    let increasingNewIndexSequence = getSequence(newIndexToOldMapIndex);
+    let j = increasingNewIndexSequence.length - 1; // 取出最后一个人的索引
+    // console.log('=increasingNewIndexSequence>', increasingNewIndexSequence)
     for (let i = toBePatched - 1; i >= 0; i--) {
       const nextIndex = s2 + i; // [ecdh]   找到h的索引 
       const nextChild = c2[nextIndex]; // 找到 h
       let anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null; // 找到当前元素的下一个元素
       if (newIndexToOldMapIndex[i] == 0) { // 这是一个新元素 直接创建插入到 当前元素的下一个即可
-          patch(null, nextChild, el, anchor)
+        patch(null, nextChild, el, anchor)
       } else {
-          // 根据参照物 将节点直接移动过去  所有节点都要移动 （但是有些节点可以不动）
-          hostInsert(nextChild.el, el, anchor);
+        // 根据参照物 将节点直接移动过去  所有节点都要移动 （但是有些节点可以不动）
+        if (i != increasingNewIndexSequence[j]) {
+          hostInsert(nextChild.el, el, anchor);; // 操作当前的d 以d下一个作为参照物插入
+        } else {
+          j--; // 跳过不需要移动的元素， 为了减少移动操作 需要这个最长递增子序列算法  
+        }
       }
-  }
+    }
   }
 
 
