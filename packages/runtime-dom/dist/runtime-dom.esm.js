@@ -498,6 +498,17 @@ function createRenderer(options) {
         patch(prevChild, c2[newIndex], el);
       }
     }
+    console.log("newIndexToOldMapIndex=>", newIndexToOldMapIndex);
+    for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
+      const nextIndex = s2 + i2;
+      const nextChild = c2[nextIndex];
+      let anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null;
+      if (newIndexToOldMapIndex[i2] == 0) {
+        patch(null, nextChild, el, anchor);
+      } else {
+        hostInsert(nextChild.el, el, anchor);
+      }
+    }
   };
   const patchChildren = (n1, n2, el) => {
     const c1 = n1 && n1.children;

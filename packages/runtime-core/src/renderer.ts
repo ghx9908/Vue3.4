@@ -151,7 +151,7 @@ export function createRenderer(options) {
     }
     // 去老的里面找，看在新的里面有没有，如果没有，说明老的被删除掉了
 
-    const toBePatched = e2 - s2 + 1;
+    const toBePatched = e2 - s2 + 1;//新的儿子需要有这么多需要被patch
     const newIndexToOldMapIndex = new Array(toBePatched).fill(0);
 
     for (let i = s1; i <= e1; i++) {
@@ -162,11 +162,24 @@ export function createRenderer(options) {
       } else {
         // a b c d
         // b a e f
-        newIndexToOldMapIndex[newIndex - s2] = i + 1;
+        newIndexToOldMapIndex[newIndex - s2] = i + 1;// 新的在老的里面对应的第几个
         //老的里面有 新的里面也有，那就需要做diff算法，比较这两个节点的属性差异和儿子的区别
         patch(prevChild, c2[newIndex], el); // 只是比较了属性，还需要移动位置
       }
     }
+    console.log('newIndexToOldMapIndex=>',newIndexToOldMapIndex)
+
+    for (let i = toBePatched - 1; i >= 0; i--) {
+      const nextIndex = s2 + i; // [ecdh]   找到h的索引 
+      const nextChild = c2[nextIndex]; // 找到 h
+      let anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null; // 找到当前元素的下一个元素
+      if (newIndexToOldMapIndex[i] == 0) { // 这是一个新元素 直接创建插入到 当前元素的下一个即可
+          patch(null, nextChild, el, anchor)
+      } else {
+          // 根据参照物 将节点直接移动过去  所有节点都要移动 （但是有些节点可以不动）
+          hostInsert(nextChild.el, el, anchor);
+      }
+  }
   }
 
 

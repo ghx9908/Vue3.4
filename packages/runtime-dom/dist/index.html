@@ -11,18 +11,31 @@
 <body>
     <div id="app"></div>
     <script type="module">
-        import { h, render, Text, Fragment } from './runtime-dom.esm.js'
-        // import { createRenderer, h, render, Text, Fragment } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-        // const VNode = h(Text, 'zs')
-        const VueComponent = {
-            data() {
-                return { age: 13 }
-            },
-            render() {
-                return h('p', [h(Text, "I'm Zan San"), h('span', this.age + '')])
-            }
-        }
-        render(h(VueComponent), app);
+        import { h, render } from './runtime-dom.esm.js'
+        const VDom1 = h('div', [
+            h('div', { key: 'a' }, 'a'),
+            h('div', { key: 'b' }, 'b'),
+            h('div', { key: 'c', style: { color: 'red' } }, 'c'),
+            h('div', { key: 'd' }, 'd'),
+            h('div', { key: 'e' }, 'e'),
+            h('div', { key: 'q' }, 'q'),
+            h('div', { key: 'f' }, 'f'),
+            h('div', { key: 'g' }, 'g')
+        ])
+        const VDom2 = h('div', [
+            h('div', { key: 'a' }, 'a'),
+            h('div', { key: 'b' }, 'b'),
+            h('div', { key: 'e' }, 'e'),
+            h('div', { key: 'c', style: { color: 'green' } }, 'cc'),
+            h('div', { key: 'd' }, 'dd'),
+            h('div', { key: 'h' }, 'h'),
+            h('div', { key: 'f' }, 'f'),
+            h('div', { key: 'g' }, 'g')
+        ])
+        render(VDom1, app); // render 方法是非常常用，我们在vue中想渲染一个弹框组件，需要渲染到body
+        setTimeout(() => {
+            render(VDom2, app);
+        }, 1000)
     </script>
 </body>
 
