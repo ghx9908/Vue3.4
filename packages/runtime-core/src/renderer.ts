@@ -5,7 +5,7 @@ import {
   Text,
 } from "./createVNode";
 import { createInstance, setupComponent } from "./component";
-import { ReactiveEffect } from "@vue/reactivity";
+import { ReactiveEffect, reactive } from "@vue/reactivity";
 import { getSequence } from "./seq";
 export function createRenderer(options) {
   const {
@@ -309,20 +309,51 @@ export function createRenderer(options) {
     update();
   }
 
-  function mountComponent(n2, container) {
-    // 1) 给组件生成一个实例 instance
-    const instance = (n2.component = createInstance(n2));
-    // 2) 初始化实例属性 props attrs slots
-    setupComponent(instance);
-    // 3) 创建渲染effect
-    setupRenderEffect(instance, container);
-    // 3) 生成一个effect 并且调用渲染
+  function mountComponent(n2, container,anchor) {
+     // 组件的数据和渲染函数
+    const { data = () => ({}), render } = n2.type;
+
+    const state = reactive(data()); // 获取的数据; 将数据变成响应式的
+
+
+    // getCurrentInstance 获取当前组件的实例
+    const instance = {
+      state,
+      isMounted: false, // 默认组件没有初始化，初始化后会将此属性isMounted true
+      subTree: null, // 要渲染的子树的虚拟节点
+      vnode: n2, // 组件的虚拟节点
+      update: null,
+    }; // 此实例就是用来继续组件的属性的，相关信息的
+
+    const componentUpdateFn = () => {
+      // 组件要渲染的 虚拟节点是render函数返回的结果
+      // 组件有自己的虚拟节点，返回的虚拟节点 subTree
+      if (!instance.isMounted) {
+        const subTree = render.call(state, state); // 这里先暂且将proxy 设置为状态
+        patch(null, subTree, container, anchor);
+        instance.subTree = subTree; // 记录第一次的subTree
+        instance.isMounted = true;
+      } else {
+        const prevSubTree = instance.subTree;
+        const nextSubTree = render.call(state, state);
+        instance.subTree = nextSubTree;
+        patch(prevSubTree, nextSubTree, container, anchor);
+      }
+      // 当调用render方法的时候 会触发响应式的数据访问，进行effect的收集
+      // 所以数据变化后会重新触发effect执行
+    };
+    const effect = new ReactiveEffect(componentUpdateFn); // 对应的effect方法
+    const update = (instance.update = effect.run.bind(effect));
+    update();
   }
+
+  const updateComponent = (n1, n2, el, anchor) => {};
   const processComponent = (n1, n2, container, anchor) => {
     if (n1 == null) {
-      mountComponent(n2, container);
+      mountComponent(n2, container,anchor);
     } else {
       // 组件更新逻辑
+      updateComponent(n1, n2,container, anchor); // 组件的属性变化了,或者插槽变化了
     }
   }
 
