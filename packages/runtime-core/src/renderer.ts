@@ -8,6 +8,7 @@ import { queueJob } from "./scheduler";
 import { createInstance, setupComponent } from "./component";
 import { ReactiveEffect, reactive } from "@vue/reactivity";
 import { getSequence } from "./seq";
+import { initProps } from "./componentProps";
 export function createRenderer(options) {
   const {
     insert: hostInsert,
@@ -291,33 +292,69 @@ export function createRenderer(options) {
     }
   }
 
-  function mountComponent(n2, container,anchor) {
-     // 组件的数据和渲染函数
-    const { data = () => ({}), render } = n2.type;
-
+  const publicPropertiesMap = {
+    $attrs: i => i.attrs
+  }
+  function mountComponent(vnode, container, anchor) {
+    // 组件的数据和渲染函数
+    const { data = () => ({}), render, props: propsOptions = {} } = vnode.type;
     const state = reactive(data()); // 获取的数据; 将数据变成响应式的
-
-
     // getCurrentInstance 获取当前组件的实例
     const instance = {
       state,
       isMounted: false, // 默认组件没有初始化，初始化后会将此属性isMounted true
       subTree: null, // 要渲染的子树的虚拟节点
-      vnode: n2, // 组件的虚拟节点
+      vnode: vnode, // 组件的虚拟节点
       update: null,
-    }; // 此实例就是用来继续组件的属性的，相关信息的
+      propsOptions,
+      attrs: {},
+      props: {},
+      proxy: null
 
+    }; // 此实例就是用来继续组件的属性的，相关信息的
+    vnode.component = instance
+    initProps(instance, vnode.props);
+    console.log('instance.props,instance.arrts=>', instance.props, instance.attrs)
+    instance.proxy = new Proxy(instance, {
+      get(target, key, receiver) {
+        const { state, props } = target;
+
+        // if (key in setupState) {
+        //   return setupState[key];
+        // }
+        if (state && key in state) {
+          return state[key];
+        } else if (key in props) {
+          return props[key];
+        }
+        const publicGetter = publicPropertiesMap[key];
+        if (publicGetter) {
+          return publicGetter(instance)
+        }
+      },
+      set(target, key, value, receiver) {
+        const { state, props } = target;
+        if (state && key in state) {
+          state[key] = value;
+          return true;
+        } else if (key in props) {
+          console.warn("不允许修改props");
+          return false;
+        }
+        return true;
+      },
+    });
     const componentUpdateFn = () => {
       // 组件要渲染的 虚拟节点是render函数返回的结果
       // 组件有自己的虚拟节点，返回的虚拟节点 subTree
       if (!instance.isMounted) {
-        const subTree = render.call(state, state); // 这里先暂且将proxy 设置为状态
+        const subTree = render.call(instance.proxy, instance.proxy); // 这里先暂且将proxy 设置为状态
         patch(null, subTree, container, anchor);
         instance.subTree = subTree; // 记录第一次的subTree
         instance.isMounted = true;
       } else {
         const prevSubTree = instance.subTree;
-        const nextSubTree = render.call(state, state);
+        const nextSubTree = render.call(instance.proxy, instance.proxy);
         instance.subTree = nextSubTree;
         patch(prevSubTree, nextSubTree, container, anchor);
       }
@@ -333,13 +370,13 @@ export function createRenderer(options) {
     update();
   }
 
-  const updateComponent = (n1, n2, el, anchor) => {};
+  const updateComponent = (n1, n2, el, anchor) => { };
   const processComponent = (n1, n2, container, anchor) => {
     if (n1 == null) {
-      mountComponent(n2, container,anchor);
+      mountComponent(n2, container, anchor);
     } else {
       // 组件更新逻辑
-      updateComponent(n1, n2,container, anchor); // 组件的属性变化了,或者插槽变化了
+      updateComponent(n1, n2, container, anchor); // 组件的属性变化了,或者插槽变化了
     }
   }
 

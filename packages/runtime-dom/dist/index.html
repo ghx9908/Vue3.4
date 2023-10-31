@@ -15,19 +15,28 @@
         // import { createRenderer, h, render, Text, Fragment } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
         // const VNode = h(Text, 'zs')
         const VueComponent = {
-            data() {
-                return { age: 13, a:1 }
+            data() { //防止data数据被共享 ，如果是一个对象可能就会涉及到这个对象被共享给多个组件来使用
+                return { age: 13 }
+            },
+            props: {
+                a: Object,
+                b: Number
             },
             render(proxy) {
+                console.log('proxy=>', proxy)
+
                 setTimeout(() => {
-                    proxy.age++;
-                    proxy.a++;
-                    
-                }, 1000)
-                return h('p', [h(Text, "I'm Zan San"), h('span', proxy.age + '-'+proxy.a)])
+                    proxy.a = 'b'
+                }, 100)
+                return h('p', [h(Text, "I'm Zan San"), h('span', proxy.age + '-' + proxy.a)])
             }
         }
-        render(h(VueComponent), app);
+
+        // 属性分为两种  第一种：props  第二种attrs
+        // props 是响应式的 但是是浅的. 也可以不是响应式的
+        // attrs 在开发环境下 是响应式 生产是非响应式的 
+        // attrs = 用户传递props - propsOptions, 自己无法消费的数据可以快速传递给其他组件
+        render(h(VueComponent, { a: 'a', b: 2, c: 1 }), app);
     </script>
 </body>
 

@@ -332,6 +332,24 @@ function getSequence(arr) {
   return result;
 }
 
+// packages/runtime-core/src/componentProps.ts
+function initProps(instance, rawProps) {
+  const props = {};
+  const attrs = {};
+  const options = instance.propsOptions || {};
+  if (rawProps) {
+    for (let key in rawProps) {
+      if (key in options) {
+        props[key] = rawProps[key];
+      } else {
+        attrs[key] = rawProps[key];
+      }
+    }
+  }
+  instance.props = reactive(props);
+  instance.attrs = attrs;
+}
+
 // packages/runtime-core/src/renderer.ts
 function createRenderer(options) {
   const {
@@ -519,25 +537,60 @@ function createRenderer(options) {
       patchElement(n1, n2);
     }
   }
-  function mountComponent(n2, container, anchor) {
-    const { data = () => ({}), render: render3 } = n2.type;
+  const publicPropertiesMap = {
+    $attrs: (i) => i.attrs
+  };
+  function mountComponent(vnode, container, anchor) {
+    const { data = () => ({}), render: render3, props: propsOptions = {} } = vnode.type;
     const state = reactive(data());
     const instance = {
       state,
       isMounted: false,
       subTree: null,
-      vnode: n2,
-      update: null
+      vnode,
+      update: null,
+      propsOptions,
+      attrs: {},
+      props: {},
+      proxy: null
     };
+    vnode.component = instance;
+    initProps(instance, vnode.props);
+    console.log("instance.props,instance.arrts=>", instance.props, instance.attrs);
+    instance.proxy = new Proxy(instance, {
+      get(target, key, receiver) {
+        const { state: state2, props } = target;
+        if (state2 && key in state2) {
+          return state2[key];
+        } else if (key in props) {
+          return props[key];
+        }
+        const publicGetter = publicPropertiesMap[key];
+        if (publicGetter) {
+          return publicGetter(instance);
+        }
+      },
+      set(target, key, value, receiver) {
+        const { state: state2, props } = target;
+        if (state2 && key in state2) {
+          state2[key] = value;
+          return true;
+        } else if (key in props) {
+          console.warn("\u4E0D\u5141\u8BB8\u4FEE\u6539props");
+          return false;
+        }
+        return true;
+      }
+    });
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
-        const subTree = render3.call(state, state);
+        const subTree = render3.call(instance.proxy, instance.proxy);
         patch(null, subTree, container, anchor);
         instance.subTree = subTree;
         instance.isMounted = true;
       } else {
         const prevSubTree = instance.subTree;
-        const nextSubTree = render3.call(state, state);
+        const nextSubTree = render3.call(instance.proxy, instance.proxy);
         instance.subTree = nextSubTree;
         patch(prevSubTree, nextSubTree, container, anchor);
       }
