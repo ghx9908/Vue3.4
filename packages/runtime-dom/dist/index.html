@@ -16,13 +16,15 @@
         // const VNode = h(Text, 'zs')
         const VueComponent = {
             data() {
-                return { age: 13 }
+                return { age: 13, a:1 }
             },
             render(proxy) {
                 setTimeout(() => {
                     proxy.age++;
+                    proxy.a++;
+                    
                 }, 1000)
-                return h('p', [h(Text, "I'm Zan San"), h('span', proxy.age + '')])
+                return h('p', [h(Text, "I'm Zan San"), h('span', proxy.age + '-'+proxy.a)])
             }
         }
         render(h(VueComponent), app);

@@ -141,6 +141,28 @@ function h(type, propsOrChildren, children) {
   }
 }
 
+// packages/runtime-core/src/scheduler.ts
+var queue = [];
+var isFlushing = false;
+var p = Promise.resolve();
+function queueJob(job) {
+  if (!queue.includes(job)) {
+    queue.push(job);
+  }
+  if (!isFlushing) {
+    isFlushing = true;
+    p.then(() => {
+      isFlushing = false;
+      let copyQueue = queue.slice(0);
+      queue.length = 0;
+      copyQueue.forEach((job2) => {
+        job2();
+      });
+      copyQueue.length = 0;
+    });
+  }
+}
+
 // packages/reactivity/src/effect.ts
 var activeEffect = void 0;
 function cleanupEffect(effect) {
@@ -274,7 +296,7 @@ function reactive(target) {
 function getSequence(arr) {
   const result = [0];
   const len = arr.length;
-  const p = arr.slice(0).fill(-1);
+  const p2 = arr.slice(0).fill(-1);
   let start;
   let end;
   let middle;
@@ -284,7 +306,7 @@ function getSequence(arr) {
       let resultLastIndex = result[result.length - 1];
       if (arr[resultLastIndex] < arrI) {
         result.push(i2);
-        p[i2] = resultLastIndex;
+        p2[i2] = resultLastIndex;
         continue;
       }
       start = 0;
@@ -297,7 +319,7 @@ function getSequence(arr) {
           end = middle;
         }
       }
-      p[i2] = result[start - 1];
+      p2[i2] = result[start - 1];
       result[start] = i2;
     }
   }
@@ -305,7 +327,7 @@ function getSequence(arr) {
   let last = result[i - 1];
   while (i-- > 0) {
     result[i] = last;
-    last = p[last];
+    last = p2[last];
   }
   return result;
 }
@@ -497,23 +519,6 @@ function createRenderer(options) {
       patchElement(n1, n2);
     }
   }
-  function setupRenderEffect(instance, container) {
-    const componentUpdateFn = () => {
-      if (!instance.isMounted) {
-        const subTree = instance.render.call(instance.proxy, instance.proxy);
-        instance.subTree = subTree;
-        patch(null, subTree, container);
-        instance.isMounted = true;
-      } else {
-        const subTree = instance.render.call(instance.proxy, instance.proxy);
-        patch(instance.subTree, subTree, container);
-        instance.subTree = subTree;
-      }
-    };
-    const effect = new ReactiveEffect(componentUpdateFn);
-    const update = instance.update = effect.run.bind(effect);
-    update();
-  }
   function mountComponent(n2, container, anchor) {
     const { data = () => ({}), render: render3 } = n2.type;
     const state = reactive(data());
@@ -537,7 +542,9 @@ function createRenderer(options) {
         patch(prevSubTree, nextSubTree, container, anchor);
       }
     };
-    const effect = new ReactiveEffect(componentUpdateFn);
+    const effect = new ReactiveEffect(componentUpdateFn, () => {
+      queueJob(instance.update);
+    });
     const update = instance.update = effect.run.bind(effect);
     update();
   }

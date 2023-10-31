@@ -4,6 +4,7 @@ import {
   Fragment,
   Text,
 } from "./createVNode";
+import { queueJob } from "./scheduler";
 import { createInstance, setupComponent } from "./component";
 import { ReactiveEffect, reactive } from "@vue/reactivity";
 import { getSequence } from "./seq";
@@ -290,25 +291,6 @@ export function createRenderer(options) {
     }
   }
 
-  function setupRenderEffect(instance, container) {
-    const componentUpdateFn = () => {
-      if (!instance.isMounted) {
-        // 初次渲染
-        const subTree = instance.render.call(instance.proxy, instance.proxy);
-        instance.subTree = subTree;
-        patch(null, subTree, container);
-        instance.isMounted = true;
-      } else {
-        const subTree = instance.render.call(instance.proxy, instance.proxy);
-        patch(instance.subTree, subTree, container);
-        instance.subTree = subTree;
-      }
-    };
-    const effect = new ReactiveEffect(componentUpdateFn)
-    const update = instance.update = effect.run.bind(effect);
-    update();
-  }
-
   function mountComponent(n2, container,anchor) {
      // 组件的数据和渲染函数
     const { data = () => ({}), render } = n2.type;
@@ -342,7 +324,11 @@ export function createRenderer(options) {
       // 当调用render方法的时候 会触发响应式的数据访问，进行effect的收集
       // 所以数据变化后会重新触发effect执行
     };
-    const effect = new ReactiveEffect(componentUpdateFn); // 对应的effect方法
+    const effect = new ReactiveEffect(componentUpdateFn, () => {
+      // 这里我们可以延迟调用componentUpdateFn
+      // 批处理 + 去重
+      queueJob(instance.update);
+    }); // 对应的effect方法
     const update = (instance.update = effect.run.bind(effect));
     update();
   }
