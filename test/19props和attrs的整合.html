@@ -25,9 +25,9 @@
             render(proxy) {
                 console.log('proxy=>', proxy)
                 console.log('this=>', this)
-                setTimeout(() => {
-                    proxy.age++;
-                }, 1000)
+                // setTimeout(() => {
+                //     proxy.a = 'b'
+                // }, 100)
                 return h('p', [h(Text, "I'm Zan San"), h('span', proxy.age + '-' + proxy.a)])
             }
         }

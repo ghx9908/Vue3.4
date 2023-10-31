@@ -1,7 +1,7 @@
 import { proxyRefs, reactive } from "@vue/reactivity";
 import { initProps } from "./componentProps";
 import { isFunction, isObject } from "@vue/shared";
-export function createInstance(n2) {
+export function createComponentInstance(n2) {
   const instance = {
     // 组件的实例，用它来记录组件中的属性
     setupState: {},
