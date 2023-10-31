@@ -639,12 +639,11 @@ function createRenderer(options) {
       patchElement(n1, n2);
     }
   }
-  function updateProps(instance, nextProps) {
-    let prevProps = instance.props;
-    for (let key in nextProps) {
+  function updateProps(prevProps, nextProps) {
+    for (const key in nextProps) {
       prevProps[key] = nextProps[key];
     }
-    for (let key in prevProps) {
+    for (const key in prevProps) {
       if (!(key in nextProps)) {
         delete prevProps[key];
       }
@@ -653,7 +652,7 @@ function createRenderer(options) {
   function updatePreRender(instance, next) {
     instance.next = null;
     instance.vnode = next;
-    updateProps(instance, next.props);
+    updateProps(instance.props, next.props);
   }
   function setupRenderEffect(instance, el, anchor) {
     const componentUpdateFn = () => {
@@ -687,7 +686,32 @@ function createRenderer(options) {
     setupComponent(instance);
     setupRenderEffect(instance, container, anchor);
   }
+  const hasPropsChanged = (prevProps = {}, nextProps = {}) => {
+    const nextKeys = Object.keys(nextProps);
+    if (nextKeys.length !== Object.keys(prevProps).length) {
+      return true;
+    }
+    for (let i = 0; i < nextKeys.length; i++) {
+      const key = nextKeys[i];
+      if (nextProps[key] !== prevProps[key]) {
+        return true;
+      }
+    }
+    return false;
+  };
+  function shouldComponentUpdate(n1, n2) {
+    const oldProps = n1.props;
+    const newProps = n2.props;
+    if (oldProps == newProps)
+      return false;
+    return hasPropsChanged(oldProps, newProps);
+  }
   const updateComponent = (n1, n2, el, anchor) => {
+    const instance = n2.component = n1.component;
+    if (shouldComponentUpdate(n1, n2)) {
+      instance.next = n2;
+      instance.update();
+    }
   };
   const processComponent = (n1, n2, container, anchor) => {
     if (n1 == null) {

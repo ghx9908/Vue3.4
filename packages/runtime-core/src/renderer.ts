@@ -292,23 +292,22 @@ export function createRenderer(options) {
     }
   }
 
-  function updateProps(instance, nextProps) {
-    // 应该考虑一下 attrs 和 props
-    let prevProps = instance.props;
-    for (let key in nextProps) {
-      prevProps[key] = nextProps[key];
+  function updateProps(prevProps, nextProps) {
+    for (const key in nextProps) { // 循环props
+      prevProps[key] = nextProps[key]; // 响应式属性更新后会重新渲染
     }
-    for (let key in prevProps) {
+    for (const key in prevProps) { // 循环props
       if (!(key in nextProps)) {
-        delete prevProps[key];
+        delete prevProps[key]
       }
     }
   }
+
   // 在渲染前记得要更新变化的属性
   function updatePreRender(instance, next) {
     instance.next = null;
     instance.vnode = next; // 更新虚拟节点
-    updateProps(instance, next.props);
+    updateProps(instance.props, next.props);// 更新属性
   }
   function setupRenderEffect(instance, el, anchor) {
     const componentUpdateFn = () => {
@@ -358,7 +357,42 @@ export function createRenderer(options) {
     setupRenderEffect(instance, container, anchor);
   }
 
-  const updateComponent = (n1, n2, el, anchor) => { };
+  const hasPropsChanged = (prevProps = {}, nextProps = {}) => {
+    const nextKeys = Object.keys(nextProps);
+    // 直接看数量、数量后变化 就不用遍历了
+    if (nextKeys.length !== Object.keys(prevProps).length) {
+      return true;
+    }
+    for (let i = 0; i < nextKeys.length; i++) {
+      const key = nextKeys[i];
+      if (nextProps[key] !== prevProps[key]) {
+        return true;
+      }
+    }
+    return false
+  }
+  function shouldComponentUpdate(n1, n2) {
+    const oldProps = n1.props;
+    const newProps = n2.props;
+
+    if (oldProps == newProps) return false;
+
+    return hasPropsChanged(oldProps, newProps);
+  }
+
+  // 组建的更新逻辑
+  const updateComponent = (n1, n2, el, anchor) => {
+    const instance = (n2.component = n1.component);
+    // 内部props是响应式的所以更新 props就能自动更新视图  vue2就是这样搞的
+    // instance.props.message = n2.props.message;
+
+    // 这里我们可以比较属性，如果属性发生变化了，我们调用instance.update 来处理更新逻辑，统一更新的入口
+    // updateProps(oldProps, newProps);
+    if (shouldComponentUpdate(n1, n2)) {
+      instance.next = n2; // 暂存新的虚拟节点
+      instance.update();
+    }
+  };
   const processComponent = (n1, n2, container, anchor) => {
     if (n1 == null) {
       mountComponent(n2, container, anchor);
