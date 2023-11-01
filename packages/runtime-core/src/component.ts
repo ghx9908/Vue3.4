@@ -68,10 +68,24 @@ export function setupComponent(instance) {
         // onMyEvent  onMyEvent
         let handler =
           props[`on${eventName[0].toUpperCase()}${eventName.slice(1)}`];
-        handler && handler(...args);
+        if (handler) {
+          let handlers = Array.isArray(handler) ? handler : [handler];
+          handlers.forEach((handler) => handler(...args));
+        }
       },
+      // 插槽的更新
+      // 组件的生命周期
+      // vue3中的靶向更新，编译优化原理ast语法树、代码转换、代码生成
+      // 组件实现  provide\inject\....
+      // pinia vue-router原理
+      // compile()
+      // 组件、树、表格、滚动组件
       slots: instance.slots,
-      expose: () => { },
+      expose(exposed) {
+        // 主要用于ref ，通过ref获取组件的时候 在vue里只能获取到组件实例，但是在vue3中如果提供了
+        // exposed 则获取的就是exposed属性
+        instance.exposed = exposed;
+      },
     });
 
     if (isObject(setupResult)) {
