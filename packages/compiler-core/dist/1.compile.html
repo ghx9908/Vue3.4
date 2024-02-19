@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script type="module">
+        // vue / compiler-dom (指令)
+
+        // import { compile } from '../../../node_modules/@vue/compiler-dom/dist/compiler-dom.esm-browser.js'
+        import { compile } from './compiler-core.esm.js'
+
+        // 1）我们需要将html语法进行抽象语法树的转化。 类似于虚拟dom
+        // 2) 抽象语法树是对语法的描述，会描述语法  ast
+        // 3) 根据子串解析成语法树
+        // 4) 对我们的语法树进行转化，找到一些需要的辅助函数，并且跟元素增加代码生成的逻辑 generCode  transform
+        // 5) 代码生成  字符串拼接。遍历树
+        // <div>{{ name }} 30</div>
+
+        // createElement('div',_toDisplayString(name) + 30)
+
+        // 多个空格浏览器只能解析出一个来
+        console.log(compile(`123{{231}}<div></div>`))
+    </script>
+</body>
+
+</html>

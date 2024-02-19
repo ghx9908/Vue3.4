@@ -1,6 +1,5 @@
 const fs = require("fs")
 const execa = require("execa")
-debugger
 const targets = fs.readdirSync("packages").filter((f) => {
   if (!fs.statSync(`packages/${f}`).isDirectory()) {
     return false

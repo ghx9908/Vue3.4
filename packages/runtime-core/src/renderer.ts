@@ -5,7 +5,7 @@ import {
   Text,
 } from "./createVNode";
 import { queueJob } from "./scheduler";
-import { createComponentInstance, createInstance, setupComponent } from "./component";
+import { createComponentInstance, setupComponent } from "./component";
 import { ReactiveEffect, reactive } from "@vue/reactivity";
 import { getSequence } from "./seq";
 import { initProps } from "./componentProps";
