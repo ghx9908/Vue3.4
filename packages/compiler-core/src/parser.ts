@@ -72,8 +72,8 @@ function getCursor(context) { // 获取当前位置
   return { line, column, offset }
 }
 
-function getSelection(context, start) {
-  const end = getCursor(context);
+function getSelection(context, start, end?) {
+  end = getCursor(context);
   return {
     start,
     end,
@@ -83,7 +83,7 @@ function getSelection(context, start) {
 /**
  * 解析文本
  *
- * @param context 解析上下文
+ * @param context 解析上下文ds
  * @returns 返回解析后的文本
  */
 function parseText(context) { // 123123{{name}}</div>
@@ -106,13 +106,63 @@ function parseText(context) { // 123123{{name}}</div>
   }
 
 }
+
+/**
+ * 解析插值表达式
+ *
+ * @param context 上下文
+ * @returns 插值表达式对象
+ */
+function parseInterpolation(context) {//{{ name}}
+
+  // 获取表达式的开头位置
+  const start = getCursor(context);
+  // 找到结束位置
+  const closeIndex = context.source.indexOf('}}', 2);
+  // 去掉  {{
+  advanceBy(context, 2);
+  // 计算里面开始和结束
+  const innerStart = getCursor(context);
+  const innerEnd = getCursor(context);
+  // 拿到原始{{}}中内容长度
+  const rawContentLength = closeIndex - 2;
+  // 解析文本数据
+  const preTrimContent = parseTextData(context, rawContentLength);
+  // 去除两边的空格
+  const content = preTrimContent.trim();
+  // 获取内容的起始位置
+  const startOffest = preTrimContent.indexOf(content);
+  if (startOffest > 0) { // 有空格
+    // 计算表达式开始位置
+    advancePositionWithMutation(innerStart, preTrimContent, startOffest);
+  }
+  // 获取内容的结束位置
+  const endOffset = content.length + startOffest;
+  // 计算表达式结束位置
+  advancePositionWithMutation(innerEnd, preTrimContent, endOffset)
+  // 去掉}}
+  advanceBy(context, 2);
+  return {
+    type: NodeTypes.INTERPOLATION,
+    content: {
+      type: NodeTypes.SIMPLE_EXPRESSION,
+      isStatic: false,
+      content,
+      // 需要修改getSelection方法
+      loc: getSelection(context, innerStart, innerEnd)
+    },
+    loc: getSelection(context, start)
+  }
+}
+
+
 function parseChildren(context) {
   const nodes = [];// 存储解析后的节点
   while (!isEnd(context)) {
     const s = context.source; // 获取当前内容
     let node;// 存储当前节点
     if (s.startsWith('{{')) { // 处理表达式类型
-      node = {}
+      node = parseInterpolation(context);
     } else if (s[0] === '<') { // 标签的开头
 
       if (/[a-z]/i.test(s[1])) {
@@ -124,7 +174,7 @@ function parseChildren(context) {
 
     }
     nodes.push(node);
-    break
+
   }
   return nodes;
 }

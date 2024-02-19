@@ -39,8 +39,8 @@ function getCursor(context) {
   let { line, column, offset } = context;
   return { line, column, offset };
 }
-function getSelection(context, start) {
-  const end = getCursor(context);
+function getSelection(context, start, end) {
+  end = getCursor(context);
   return {
     start,
     end,
@@ -64,13 +64,40 @@ function parseText(context) {
     loc: getSelection(context, start)
   };
 }
+function parseInterpolation(context) {
+  const start = getCursor(context);
+  const closeIndex = context.source.indexOf("}}", 2);
+  advanceBy(context, 2);
+  const innerStart = getCursor(context);
+  const innerEnd = getCursor(context);
+  const rawContentLength = closeIndex - 2;
+  const preTrimContent = parseTextData(context, rawContentLength);
+  const content = preTrimContent.trim();
+  const startOffest = preTrimContent.indexOf(content);
+  if (startOffest > 0) {
+    advancePositionWithMutation(innerStart, preTrimContent, startOffest);
+  }
+  const endOffset = content.length + startOffest;
+  advancePositionWithMutation(innerEnd, preTrimContent, endOffset);
+  advanceBy(context, 2);
+  return {
+    type: 5 /* INTERPOLATION */,
+    content: {
+      type: 4 /* SIMPLE_EXPRESSION */,
+      isStatic: false,
+      content,
+      loc: getSelection(context, innerStart, innerEnd)
+    },
+    loc: getSelection(context, start)
+  };
+}
 function parseChildren(context) {
   const nodes = [];
   while (!isEnd(context)) {
     const s = context.source;
     let node;
     if (s.startsWith("{{")) {
-      node = {};
+      node = parseInterpolation(context);
     } else if (s[0] === "<") {
       if (/[a-z]/i.test(s[1])) {
         node = {};
@@ -80,7 +107,6 @@ function parseChildren(context) {
       node = parseText(context);
     }
     nodes.push(node);
-    break;
   }
   return nodes;
 }
