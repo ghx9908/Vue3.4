@@ -25,7 +25,11 @@
         // createElement('div',_toDisplayString(name) + 30)
 
         // 多个空格浏览器只能解析出一个来
-        console.log(compile(`{{  name}}   <div a='1' a="a"><p></p>123</div>`))
+        console.log(compile(`{{  name}}   
+        <div a='1' a="a">
+            <p></p>
+            123     123
+        </div>`))
     </script>
 </body>
 

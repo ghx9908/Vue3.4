@@ -224,7 +224,6 @@ function parseAttributes(context) {
  */
 function parseTag(context) {
   const start = getCursor(context);
-  debugger
   // 2.匹配标签名
   const match = /^<\/?([a-z][^ \t\r\n/>]*)/.exec(context.source);
   const tag = match[1];
@@ -334,7 +333,18 @@ function parseChildren(context) {
     nodes.push(node);
 
   }
-  return nodes;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (node.type == NodeTypes.TEXT) { // 如果是文本 删除空白文本，其他的空格变为一个
+      if (!/[^\t\r\n\f ]/.test(node.content)) {
+        nodes[i] = null
+      } else {
+        node.content = node.content.replace(/[\t\r\n\f ]+/g, ' ')
+      }
+    }
+  }
+  return nodes.filter(Boolean)
 }
 /**
  * 将给定的模板解析为抽象语法树。

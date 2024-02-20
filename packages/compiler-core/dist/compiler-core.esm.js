@@ -120,7 +120,6 @@ function parseAttributes(context) {
 }
 function parseTag(context) {
   const start = getCursor(context);
-  debugger;
   const match = /^<\/?([a-z][^ \t\r\n/>]*)/.exec(context.source);
   const tag = match[1];
   advanceBy(context, match[0].length);
@@ -190,7 +189,17 @@ function parseChildren(context) {
     }
     nodes.push(node);
   }
-  return nodes;
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (node.type == 2 /* TEXT */) {
+      if (!/[^\t\r\n\f ]/.test(node.content)) {
+        nodes[i] = null;
+      } else {
+        node.content = node.content.replace(/[\t\r\n\f ]+/g, " ");
+      }
+    }
+  }
+  return nodes.filter(Boolean);
 }
 function baseParse(template) {
   const context = createParserContext(template);
