@@ -10,6 +10,9 @@ function createParserContext(content) {
 }
 function isEnd(context) {
   const source = context.source;
+  if (context.source.startsWith("</")) {
+    return true;
+  }
   return !source;
 }
 function advancePositionWithMutation(context, s, endIndex) {
@@ -64,6 +67,75 @@ function parseText(context) {
     loc: getSelection(context, start)
   };
 }
+function advanceSpaces(context) {
+  const match = /^[ \t\r\n]+/.exec(context.source);
+  if (match) {
+    advanceBy(context, match[0].length);
+  }
+}
+function parseAttributeValue(context) {
+  const start = getCursor(context);
+  const quote = context.source[0];
+  let content;
+  const isQuoteed = quote === '"' || quote === "'";
+  if (isQuoteed) {
+    advanceBy(context, 1);
+    const endIndex = context.source.indexOf(quote);
+    content = parseTextData(context, endIndex);
+    advanceBy(context, 1);
+  }
+  return { content, loc: getSelection(context, start) };
+}
+function parseAttribute(context) {
+  const start = getCursor(context);
+  const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source);
+  const name = match[0];
+  advanceBy(context, name.length);
+  let value;
+  if (/^[\t\r\n\f ]*=/.test(context.source)) {
+    advanceSpaces(context);
+    advanceBy(context, 1);
+    advanceSpaces(context);
+    value = parseAttributeValue(context);
+  }
+  const loc = getSelection(context, start);
+  return {
+    type: 6 /* ATTRIBUTE */,
+    name,
+    value: {
+      type: 2 /* TEXT */,
+      content: value.content
+    },
+    loc
+  };
+}
+function parseAttributes(context) {
+  const props = [];
+  while (context.source.length > 0 && !context.source.startsWith(">")) {
+    const attr = parseAttribute(context);
+    props.push(attr);
+    advanceSpaces(context);
+  }
+  return props;
+}
+function parseTag(context) {
+  const start = getCursor(context);
+  debugger;
+  const match = /^<\/?([a-z][^ \t\r\n/>]*)/.exec(context.source);
+  const tag = match[1];
+  advanceBy(context, match[0].length);
+  advanceSpaces(context);
+  let props = parseAttributes(context);
+  const isSelfClosing = context.source.startsWith("/>");
+  advanceBy(context, isSelfClosing ? 2 : 1);
+  return {
+    type: 1 /* ELEMENT */,
+    tag,
+    isSelfClosing,
+    loc: getSelection(context, start),
+    props
+  };
+}
 function parseInterpolation(context) {
   const start = getCursor(context);
   const closeIndex = context.source.indexOf("}}", 2);
@@ -91,6 +163,16 @@ function parseInterpolation(context) {
     loc: getSelection(context, start)
   };
 }
+function parseElement(context) {
+  let ele = parseTag(context);
+  const children = parseChildren(context);
+  if (context.source.startsWith("</")) {
+    parseTag(context);
+  }
+  ele.loc = getSelection(context, ele.loc.start);
+  ele.children = children;
+  return ele;
+}
 function parseChildren(context) {
   const nodes = [];
   while (!isEnd(context)) {
@@ -100,7 +182,7 @@ function parseChildren(context) {
       node = parseInterpolation(context);
     } else if (s[0] === "<") {
       if (/[a-z]/i.test(s[1])) {
-        node = {};
+        node = parseElement(context);
       }
     }
     if (!node) {

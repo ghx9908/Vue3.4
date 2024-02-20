@@ -28,6 +28,9 @@ function createParserContext(content) {
  */
 function isEnd(context) {
   const source = context.source;
+  if (context.source.startsWith('</')) { // 如果遇到结束标签说明没有子节点
+    return true;
+  }
   return !source;
 }
 
@@ -108,6 +111,144 @@ function parseText(context) { // 123123{{name}}</div>
 }
 
 /**
+ * 删除空格
+ *
+ * @param context 上下文对象
+ */
+function advanceSpaces(context) {
+  // 匹配一个或多个空格、制表符、回车和换行符
+  const match = /^[ \t\r\n]+/.exec(context.source);
+  if (match) {
+    // 通过调用 advanceBy 函数来前进到匹配到的空格的末尾
+    advanceBy(context, match[0].length);
+  }
+}
+
+/**
+ * 解析属性值
+ *
+ * @param context - 解析上下文
+ * @returns 返回包含内容及位置信息的对象
+ */
+function parseAttributeValue(context) {
+  // 获取当前光标位置
+  const start = getCursor(context);
+  // 获取第一个字符，可能是引号
+  const quote = context.source[0];
+  let content;
+  // 判断是否是带引号的
+  const isQuoteed = quote === '"' || quote === "'";
+  if (isQuoteed) {
+    // 移动光标到下一个字符
+    advanceBy(context, 1);
+    // 获取引号结束的位置
+    const endIndex = context.source.indexOf(quote);
+    // 解析引号中间的值
+    content = parseTextData(context, endIndex);  // 解析引号中间的值
+    // 移动光标到引号后面
+    advanceBy(context, 1);
+  }
+  // 返回解析结果
+  return { content, loc: getSelection(context, start) }
+}
+
+/**
+ * 解析属性
+ *
+ * @param context 解析上下文
+ * @returns 返回解析后的属性对象
+ */
+function parseAttribute(context) {
+  // 获取当前光标位置
+  const start = getCursor(context);
+
+  // 匹配属性名
+  const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source)!
+  // 捕获到属性名
+  const name = match[0]; // 捕获到属性名
+
+  // 删除属性名
+  advanceBy(context, name.length); // 删除属性名
+
+  let value
+  // 删除空格 等号
+  if (/^[\t\r\n\f ]*=/.test(context.source)) { // 删除空格 等号
+    advanceSpaces(context);
+    advanceBy(context, 1); // 删除等号
+    advanceSpaces(context); // 删除空格
+    value = parseAttributeValue(context); // 解析属性值
+  }
+
+  // 获取选区
+  const loc = getSelection(context, start)
+
+  return {
+    type: NodeTypes.ATTRIBUTE,
+    name,
+    value: {
+      type: NodeTypes.TEXT,
+      content: value.content,
+
+    },
+    loc
+  }
+}
+
+/**
+ * 解析属性
+ *
+ * @param context 解析上下文
+ * @returns 解析后的属性数组
+ */
+function parseAttributes(context) {
+  // 创建一个空数组用于存储属性
+  const props: any = [];
+  // 当还有剩余的源代码且不以 '>' 开头时
+  while (context.source.length > 0 && !context.source.startsWith('>')) {
+    // 解析属性
+    const attr = parseAttribute(context)
+    // 将解析出的属性添加到数组中
+    props.push(attr);
+    // 解析一个去空格一个
+    advanceSpaces(context); // 解析一个去空格一个
+  }
+  // 返回解析出的属性数组
+  return props
+}
+
+/**
+ * 解析标签函数
+ *
+ * @param context - 解析上下文
+ * @returns 返回解析后的标签对象
+ */
+function parseTag(context) {
+  const start = getCursor(context);
+  debugger
+  // 2.匹配标签名
+  const match = /^<\/?([a-z][^ \t\r\n/>]*)/.exec(context.source);
+  const tag = match[1];
+  advanceBy(context, match[0].length); // 删除标签
+  advanceSpaces(context); // 删除空格
+  let props = parseAttributes(context); // 处理属性
+  const isSelfClosing = context.source.startsWith('/>'); // 是否是自闭合
+  advanceBy(context, isSelfClosing ? 2 : 1); // 删除闭合 /> >
+  // ......
+  return {
+    // 元素类型
+    type: NodeTypes.ELEMENT,
+    // 标签名
+    tag,
+    // 是否自闭合
+    isSelfClosing,
+    // 位置信息
+    loc: getSelection(context, start),
+    // 属性
+    props
+
+  }
+}
+/**
  * 解析插值表达式
  *
  * @param context 上下文
@@ -155,6 +296,23 @@ function parseInterpolation(context) {//{{ name}}
   }
 }
 
+/**
+ * 解析元素
+ *
+ * @param context 解析上下文
+ * @returns 返回解析后的元素
+ */
+function parseElement(context) {
+  let ele = parseTag(context);
+  const children = parseChildren(context); // 因为结尾标签, 会再次触发parseElement,这里如果是结尾需要停止
+  if (context.source.startsWith('</')) {
+    parseTag(context); //删除闭合标签
+  }
+  ele.loc = getSelection(context, ele.loc.start); // 更新最终位置
+  (ele as any).children = children; // 添加children
+  return ele;
+}
+
 
 function parseChildren(context) {
   const nodes = [];// 存储解析后的节点
@@ -166,7 +324,7 @@ function parseChildren(context) {
     } else if (s[0] === '<') { // 标签的开头
 
       if (/[a-z]/i.test(s[1])) {
-        node = {}
+        node = parseElement(context);
       } // 开始标签
     }
     if (!node) { // 文本的处理
