@@ -346,6 +346,14 @@ function parseChildren(context) {
   }
   return nodes.filter(Boolean)
 }
+
+export function createRoot(children, loc) {
+  return {
+    type: NodeTypes.ROOT,
+    children,
+    loc
+  }
+}
 /**
  * 将给定的模板解析为抽象语法树。
  *
@@ -353,9 +361,11 @@ function parseChildren(context) {
  * @returns 返回解析后的抽象语法树
  */
 export function baseParse(template) {
-  // 创建解析上下文 行数 列数 源代码
+  // 标识节点的信息  行 列 偏移量
   const context = createParserContext(template);
-  return parseChildren(context);
+  const start = getCursor(context);
+  return createRoot(
+    parseChildren(context),
+    getSelection(context, start)
+  )
 }
-
-
