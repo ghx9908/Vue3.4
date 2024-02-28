@@ -1,14 +1,6 @@
 import { NodeTypes } from "./ast";
 
-import { TO_DISPLAY_STRING, createCallExpression, createVNodeCall, createObjectExpression, CREATE_ELEMENT_VNODE } from "./runtimeHelpers";
-export const FRAGMENT = Symbol("FRAGMENT");
-export const CREATE_ELEMENT_BLOCK = Symbol(`createElementBlock`)
-export const OPEN_BLOCK = Symbol(`openBlock`)
-export const helperNameMap = {
-  [FRAGMENT]: "Fragment",
-  [OPEN_BLOCK]: `openBlock`,  // block处理
-  [CREATE_ELEMENT_BLOCK]: `createElementBlock`
-}
+import { TO_DISPLAY_STRING, createCallExpression, createVNodeCall, createObjectExpression, CREATE_ELEMENT_VNODE, OPEN_BLOCK, CREATE_ELEMENT_BLOCK, FRAGMENT } from "./runtimeHelpers";
 import { PatchFlags } from "packages/shared/src/patchFlags";
 
 function isText(node) {

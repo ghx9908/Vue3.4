@@ -1,6 +1,7 @@
+import { isString } from "@vue/shared";
 import { NodeTypes } from "./ast";
 import { baseParse } from "./parser";
-import { TO_DISPLAY_STRING, helperNameMap } from "./runtimeHelpers";
+import { CREATE_ELEMENT_BLOCK, CREATE_ELEMENT_VNODE, FRAGMENT, OPEN_BLOCK, TO_DISPLAY_STRING, helperNameMap } from "./runtimeHelpers";
 import { transform } from "./transform";
 
 
@@ -64,7 +65,85 @@ function genInterpolation(node, context) {
   push(`)`)
 }
 
+function genNodeList(nodes, context) { // 生成节点列表，用","分割
+  const { push } = context;
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (isString(node)) {
+      push(`${node}`); // 如果是字符串直接放入
+    } else if (Array.isArray(node)) {
+      genNodeList(node, context)
+    } else {
+      genNode(node, context);
+    }
+    if (i < nodes.length - 1) {
+      push(", ");
+    }
+  }
+}
+function genVNodeCall(node, context) {
+  const { push, helper } = context;
+  const { tag, props, children, isBlock } = node
+
+  if (isBlock) {
+    push(`(${helper(OPEN_BLOCK)}(),`)
+  }
+  // 生成createElementBlock或者createElementVnode
+  const callHelper = isBlock ? CREATE_ELEMENT_BLOCK : CREATE_ELEMENT_VNODE;
+  push(helper(callHelper));
+  push('(');
+  genNodeList([tag, props, children].map(item => item || 'null'), context);
+  push(`)`)
+  if (isBlock) {
+    push(`)`)
+  }
+}
+function genObjectExpression(node, context) {
+  const { push, newline } = context
+  const { properties } = node
+  if (!properties.length) {
+    push(`{}`)
+    return
+  }
+  push('{')
+  for (let i = 0; i < properties.length; i++) {
+    const { key, value } = properties[i]
+    // key
+    push(key);
+    push(`: `)
+    push(JSON.stringify(value));
+    // value
+    if (i < properties.length - 1) {
+      push(`,`)
+    }
+  }
+  push('}')
+}
+function genCompoundExpression(node, context) {
+  for (let i = 0; i < node.children!.length; i++) {
+    const child = node.children![i]
+    if (isString(child)) {
+      context.push(child)
+    } else {
+      genNode(child, context)
+    }
+  }
+}
+
+function genCallExpression(node, context) {
+  const { push, helper } = context
+  const callee = helper(node.callee)
+
+  push(callee + `(`, node)
+  genNodeList(node.arguments, context)
+  push(`)`)
+}
+
 function genNode(node, context) {
+  if (typeof node === 'symbol') {
+    context.push(context.helper(FRAGMENT))
+    return
+  }
   switch (node.type) {
     case NodeTypes.TEXT: // 生成文本
       genText(node, context)
@@ -75,6 +154,25 @@ function genNode(node, context) {
     case NodeTypes.SIMPLE_EXPRESSION: // 简单表达式的处理
       genExpression(node, context)
       break
+    case NodeTypes.VNODE_CALL: // 元素调用
+      genVNodeCall(node, context);
+      break;
+    case NodeTypes.JS_OBJECT_EXPRESSION: // 元素属性
+      genObjectExpression(node, context)
+      break
+    case NodeTypes.ELEMENT:
+      genNode(node.codegenNode, context)
+      break;
+    case NodeTypes.COMPOUND_EXPRESSION:
+      genCompoundExpression(node, context)
+      break
+    case NodeTypes.TEXT_CALL: // 对文本处理
+      genNode(node.codegenNode, context)
+      break
+    case NodeTypes.JS_CALL_EXPRESSION: // 表达式处理
+      genCallExpression(node, context)
+      break
+
   }
 }
 

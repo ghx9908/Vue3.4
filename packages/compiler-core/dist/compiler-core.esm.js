@@ -1,3 +1,8 @@
+// packages/shared/src/index.ts
+function isString(val) {
+  return typeof val === "string";
+}
+
 // packages/compiler-core/src/parser.ts
 function createParserContext(content) {
   return {
@@ -256,14 +261,6 @@ function createObjectExpression(properties) {
 }
 
 // packages/compiler-core/src/transform.ts
-var FRAGMENT2 = Symbol("FRAGMENT");
-var CREATE_ELEMENT_BLOCK2 = Symbol(`createElementBlock`);
-var OPEN_BLOCK2 = Symbol(`openBlock`);
-var helperNameMap2 = {
-  [FRAGMENT2]: "Fragment",
-  [OPEN_BLOCK2]: `openBlock`,
-  [CREATE_ELEMENT_BLOCK2]: `createElementBlock`
-};
 function isText(node) {
   return node.type == 5 /* INTERPOLATION */ || node.type == 2 /* TEXT */;
 }
@@ -417,16 +414,16 @@ function createRootCodegen(root, context) {
       const codegenNode = child.codegenNode;
       root.codegenNode = codegenNode;
       context.removeHelper(CREATE_ELEMENT_VNODE);
-      context.helper(OPEN_BLOCK2);
-      context.helper(CREATE_ELEMENT_BLOCK2);
+      context.helper(OPEN_BLOCK);
+      context.helper(CREATE_ELEMENT_BLOCK);
       root.codegenNode.isBlock = true;
     } else {
       root.codegenNode = child;
     }
   } else {
-    root.codegenNode = createVNodeCall(context, context.helper(FRAGMENT2), void 0, root.children);
-    context.helper(OPEN_BLOCK2);
-    context.helper(CREATE_ELEMENT_BLOCK2);
+    root.codegenNode = createVNodeCall(context, context.helper(FRAGMENT), void 0, root.children);
+    context.helper(OPEN_BLOCK);
+    context.helper(CREATE_ELEMENT_BLOCK);
     root.codegenNode.isBlock = true;
   }
 }
@@ -490,7 +487,78 @@ function genInterpolation(node, context) {
   genNode(node.content, context);
   push(`)`);
 }
+function genNodeList(nodes, context) {
+  const { push } = context;
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (isString(node)) {
+      push(`${node}`);
+    } else if (Array.isArray(node)) {
+      genNodeList(node, context);
+    } else {
+      genNode(node, context);
+    }
+    if (i < nodes.length - 1) {
+      push(", ");
+    }
+  }
+}
+function genVNodeCall(node, context) {
+  const { push, helper } = context;
+  const { tag, props, children, isBlock } = node;
+  if (isBlock) {
+    push(`(${helper(OPEN_BLOCK)}(),`);
+  }
+  const callHelper = isBlock ? CREATE_ELEMENT_BLOCK : CREATE_ELEMENT_VNODE;
+  push(helper(callHelper));
+  push("(");
+  genNodeList([tag, props, children].map((item) => item || "null"), context);
+  push(`)`);
+  if (isBlock) {
+    push(`)`);
+  }
+}
+function genObjectExpression(node, context) {
+  const { push, newline } = context;
+  const { properties } = node;
+  if (!properties.length) {
+    push(`{}`);
+    return;
+  }
+  push("{");
+  for (let i = 0; i < properties.length; i++) {
+    const { key, value } = properties[i];
+    push(key);
+    push(`: `);
+    push(JSON.stringify(value));
+    if (i < properties.length - 1) {
+      push(`,`);
+    }
+  }
+  push("}");
+}
+function genCompoundExpression(node, context) {
+  for (let i = 0; i < node.children.length; i++) {
+    const child = node.children[i];
+    if (isString(child)) {
+      context.push(child);
+    } else {
+      genNode(child, context);
+    }
+  }
+}
+function genCallExpression(node, context) {
+  const { push, helper } = context;
+  const callee = helper(node.callee);
+  push(callee + `(`, node);
+  genNodeList(node.arguments, context);
+  push(`)`);
+}
 function genNode(node, context) {
+  if (typeof node === "symbol") {
+    context.push(context.helper(FRAGMENT));
+    return;
+  }
   switch (node.type) {
     case 2 /* TEXT */:
       genText(node, context);
@@ -500,6 +568,24 @@ function genNode(node, context) {
       break;
     case 4 /* SIMPLE_EXPRESSION */:
       genExpression(node, context);
+      break;
+    case 13 /* VNODE_CALL */:
+      genVNodeCall(node, context);
+      break;
+    case 15 /* JS_OBJECT_EXPRESSION */:
+      genObjectExpression(node, context);
+      break;
+    case 1 /* ELEMENT */:
+      genNode(node.codegenNode, context);
+      break;
+    case 8 /* COMPOUND_EXPRESSION */:
+      genCompoundExpression(node, context);
+      break;
+    case 12 /* TEXT_CALL */:
+      genNode(node.codegenNode, context);
+      break;
+    case 14 /* JS_CALL_EXPRESSION */:
+      genCallExpression(node, context);
       break;
   }
 }
