@@ -439,10 +439,93 @@ function transform(root) {
 }
 
 // packages/compiler-core/src/index.ts
+function createCodegenContext(ast) {
+  const context = {
+    code: ``,
+    helper(key) {
+      return `_${helperNameMap[key]}`;
+    },
+    indentLevel: 0,
+    push(code) {
+      context.code += code;
+    },
+    indent() {
+      newline(++context.indentLevel);
+    },
+    deindent(withoutnewline = false) {
+      if (withoutnewline) {
+        --context.indentLevel;
+      } else {
+        newline(--context.indentLevel);
+      }
+    },
+    newline
+  };
+  function newline(n) {
+    context.push("\n" + `  `.repeat(n));
+  }
+  return context;
+}
+function genFunctionPreamble(ast, context) {
+  const { push, newline } = context;
+  if (ast.helpers.length > 0) {
+    context.push(
+      `import {${ast.helpers.map((helper) => `${helperNameMap[helper]} as _${helperNameMap[helper]}`).join(",")}} from "vue"`
+    );
+  }
+  newline();
+  newline();
+  push(`export `);
+}
+function genText(node, context) {
+  context.push(JSON.stringify(node.content));
+}
+function genExpression(node, context) {
+  const { content } = node;
+  context.push(content);
+}
+function genInterpolation(node, context) {
+  const { push, helper } = context;
+  push(`${helper(TO_DISPLAY_STRING)}(`);
+  genNode(node.content, context);
+  push(`)`);
+}
+function genNode(node, context) {
+  switch (node.type) {
+    case 2 /* TEXT */:
+      genText(node, context);
+      break;
+    case 5 /* INTERPOLATION */:
+      genInterpolation(node, context);
+      break;
+    case 4 /* SIMPLE_EXPRESSION */:
+      genExpression(node, context);
+      break;
+  }
+}
+function generate(ast) {
+  const context = createCodegenContext(ast);
+  const { push, indent } = context;
+  genFunctionPreamble(ast, context);
+  const functionName = "render";
+  const args = ["_ctx", "$props"];
+  push(`function ${functionName}(${args.join(", ")}){`);
+  indent();
+  push(`return `);
+  if (ast.codegenNode) {
+    genNode(ast.codegenNode, context);
+  } else {
+    push(`null`);
+  }
+  context.deindent();
+  context.push(`}`);
+  return context.code;
+}
 function compile(template) {
   const ast = baseParse(template);
   transform(ast);
-  console.log("ast=>", ast);
+  const code = generate(ast);
+  console.log(code);
 }
 export {
   compile
