@@ -217,9 +217,232 @@ function baseParse(template) {
   );
 }
 
+// packages/compiler-core/src/runtimeHelpers.ts
+var TO_DISPLAY_STRING = Symbol(`toDisplayString`);
+var CREATE_TEXT = Symbol("createTextVNode");
+var CREATE_ELEMENT_VNODE = Symbol("createElementVNode");
+var FRAGMENT = Symbol("FRAGMENT");
+var CREATE_ELEMENT_BLOCK = Symbol(`createElementBlock`);
+var OPEN_BLOCK = Symbol(`openBlock`);
+var helperNameMap = {
+  [TO_DISPLAY_STRING]: "toDisplayString",
+  [CREATE_TEXT]: "createTextVNode",
+  [CREATE_ELEMENT_VNODE]: "createElementVNode",
+  [FRAGMENT]: "Fragment",
+  [OPEN_BLOCK]: `openBlock`,
+  [CREATE_ELEMENT_BLOCK]: `createElementBlock`
+};
+function createCallExpression(context, args) {
+  context.helper(CREATE_TEXT);
+  return {
+    type: 14 /* JS_CALL_EXPRESSION */,
+    arguments: args
+  };
+}
+function createVNodeCall(context, tag, props, children) {
+  context.helper(CREATE_ELEMENT_VNODE);
+  return {
+    type: 13 /* VNODE_CALL */,
+    tag,
+    props,
+    children
+  };
+}
+function createObjectExpression(properties) {
+  return {
+    type: 15 /* JS_OBJECT_EXPRESSION */,
+    properties
+  };
+}
+
+// packages/compiler-core/src/transform.ts
+var FRAGMENT2 = Symbol("FRAGMENT");
+var CREATE_ELEMENT_BLOCK2 = Symbol(`createElementBlock`);
+var OPEN_BLOCK2 = Symbol(`openBlock`);
+var helperNameMap2 = {
+  [FRAGMENT2]: "Fragment",
+  [OPEN_BLOCK2]: `openBlock`,
+  [CREATE_ELEMENT_BLOCK2]: `createElementBlock`
+};
+function isText(node) {
+  return node.type == 5 /* INTERPOLATION */ || node.type == 2 /* TEXT */;
+}
+function transformElement(node, context) {
+  if (node.type === 1 /* ELEMENT */) {
+    return function postTransformElement() {
+      let vnodeTag = `'${node.tag}'`;
+      let properties = [];
+      let props = node.props;
+      for (let i = 0; i < props.length; i++) {
+        properties.push({
+          key: props[i].name,
+          value: props[i].value.content
+        });
+      }
+      const propsExpression = props.length > 0 ? createObjectExpression(properties) : null;
+      let vnodeChildren = null;
+      if (node.children.length === 1) {
+        const child = node.children[0];
+        vnodeChildren = child;
+      } else {
+        if (node.children.length > 0) {
+          vnodeChildren = node.children;
+        }
+      }
+      node.codegenNode = createVNodeCall(context, vnodeTag, propsExpression, vnodeChildren);
+    };
+  }
+}
+function transformText(node, context) {
+  if (node.type === 1 /* ELEMENT */ || node.type === 0 /* ROOT */) {
+    return () => {
+      let hasText = false;
+      const children = node.children;
+      let currentContainer = void 0;
+      for (let i = 0; i < children.length; i++) {
+        let child = children[i];
+        if (isText(child)) {
+          hasText = true;
+          for (let j = i + 1; j < children.length; j++) {
+            const next = children[j];
+            if (isText(next)) {
+              if (!currentContainer) {
+                currentContainer = children[i] = {
+                  type: 8 /* COMPOUND_EXPRESSION */,
+                  loc: child.loc,
+                  children: [child]
+                };
+              }
+              currentContainer.children.push(` + `, next);
+              children.splice(j, 1);
+              j--;
+            } else {
+              currentContainer = void 0;
+              break;
+            }
+          }
+        }
+      }
+      if (!hasText || children.length == 1) {
+        return;
+      }
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (isText(child) || child.type === 8 /* COMPOUND_EXPRESSION */) {
+          const callArgs = [];
+          callArgs.push(child);
+          if (child.type !== 2 /* TEXT */) {
+            callArgs.push(1 /* TEXT */ + "");
+          }
+          children[i] = {
+            type: 12 /* TEXT_CALL */,
+            content: child,
+            loc: child.loc,
+            codegenNode: createCallExpression(context, callArgs)
+          };
+        }
+      }
+    };
+  }
+}
+function transformExpression(node, context) {
+  if (node.type == 5 /* INTERPOLATION */) {
+    node.content.content = `_ctx.${node.content.content}`;
+  }
+}
+function traverseNode(node, context) {
+  context.currentNode = node;
+  const transforms = context.nodeTransforms;
+  const exitsFns = [];
+  for (let i2 = 0; i2 < transforms.length; i2++) {
+    let onExit = transforms[i2](node, context);
+    if (onExit) {
+      exitsFns.push(onExit);
+    }
+    if (!context.currentNode)
+      return;
+  }
+  switch (node.type) {
+    case 1 /* ELEMENT */:
+    case 0 /* ROOT */:
+      for (let i2 = 0; i2 < node.children.length; i2++) {
+        context.parent = node;
+        traverseNode(node.children[i2], context);
+      }
+      break;
+    case 5 /* INTERPOLATION */:
+      context.helper(TO_DISPLAY_STRING);
+      break;
+  }
+  context.currentNode = node;
+  let i = exitsFns.length;
+  while (i--) {
+    exitsFns[i]();
+  }
+}
+function createTransformContext(root) {
+  const context = {
+    currentNode: root,
+    parent: null,
+    nodeTransforms: [
+      transformElement,
+      transformText,
+      transformExpression
+    ],
+    helpers: /* @__PURE__ */ new Map(),
+    helper(name) {
+      const count = context.helpers.get(name) || 0;
+      context.helpers.set(name, count + 1);
+      return name;
+    },
+    removeHelper(name) {
+      const count = context.helpers.get(name);
+      if (count) {
+        const currentCount = count - 1;
+        if (!currentCount) {
+          context.helpers.delete(name);
+        } else {
+          context.helpers.set(name, currentCount);
+        }
+      }
+    }
+  };
+  return context;
+}
+function createRootCodegen(root, context) {
+  let { children } = root;
+  if (children.length == 1) {
+    const child = children[0];
+    if (child.type === 1 /* ELEMENT */ && child.codegenNode) {
+      const codegenNode = child.codegenNode;
+      root.codegenNode = codegenNode;
+      context.removeHelper(CREATE_ELEMENT_VNODE);
+      context.helper(OPEN_BLOCK2);
+      context.helper(CREATE_ELEMENT_BLOCK2);
+      root.codegenNode.isBlock = true;
+    } else {
+      root.codegenNode = child;
+    }
+  } else {
+    root.codegenNode = createVNodeCall(context, context.helper(FRAGMENT2), void 0, root.children);
+    context.helper(OPEN_BLOCK2);
+    context.helper(CREATE_ELEMENT_BLOCK2);
+    root.codegenNode.isBlock = true;
+  }
+}
+function transform(root) {
+  let context = createTransformContext(root);
+  traverseNode(root, context);
+  createRootCodegen(root, context);
+  root.helpers = [...context.helpers.keys()];
+  console.log("root=>", root);
+}
+
 // packages/compiler-core/src/index.ts
 function compile(template) {
-  return baseParse(template);
+  const ast = baseParse(template);
+  transform(ast);
+  console.log("ast=>", ast);
 }
 export {
   compile
