@@ -1,4 +1,4 @@
-import { ShapeFlags, isObject, isString } from "@vue/shared";
+import { ShapeFlags, isFunction, isObject, isString } from "@vue/shared";
 
 export const Text = Symbol("Text");
 export const Fragment = Symbol("Fragment");
@@ -13,7 +13,8 @@ export function isSameVNodeType(n1, n2) {
 }
 export function createVNode(type, props, children = null) {
   // React.createElement
-  const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : isObject(type) ? ShapeFlags.STATEFUL_COMPONENT : 0;
+  const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : isObject(type) ? ShapeFlags.STATEFUL_COMPONENT : isFunction(type)
+    ? ShapeFlags.FUNCTIONAL_COMPONENT : 0;
   const vnode = {
     shapeFlag,
     __v_isVNode: true,

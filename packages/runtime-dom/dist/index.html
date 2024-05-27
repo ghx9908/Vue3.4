@@ -11,51 +11,17 @@
 <body>
     <div id="app"></div>
     <script type="module">
-        import { h, render, Text, reactive, toRefs, Fragment } from './runtime-dom.esm.js'
-        // import { createRenderer, reactive, h, render, Text, Fragment, toRefs } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+        // import { h, render, Text, reactive, toRefs, Fragment } from './runtime-dom.esm.js'
+        import { h, render } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
 
-        const ChildComponent = {
-            props: {
-                message: String
-            },
-            render() {
-                return h(Text, {}, this.message)
-            }
-        }
-        const VueComponent = {
-            setup(props, { emit, expose }) {
-                console.log('props,context=>', props, emit)
-                // 业务逻辑在vue中都在setup中编写
-                // 提高功能的耦合度
-                // setup的返回值会放到render函数的参数proxy中
-                const state = reactive({ name: 'zs', age: 30 });
-                const setAge = () => {
-                    state.age++
-                }
-                // return {
-                //     ...toRefs(state),
-                //     setAge
-                // }
+        function VueComponent(props, { slots }) {
+            return slots.default(props)
 
-                expose({
-                    setAge
-                })
-                return () => { // proxy,name.value  prxoyRefs
-                    return h(Fragment, [h(Text, state.name), h(Text, state.age), h('button',
-                        { onClick: () => emit('myOutputEvent', '哈哈') }, '修改')])
-                }
-            },
-            props: {
-                a: String,
-                b: Number
-            },
-            // render(proxy) { // proxy,name.value  prxoyRefs
-            //     return h('button', { onClick: proxy.setAge }, proxy.name + proxy.age)
-            // }
         }
 
-
-        render(h(VueComponent, { a: 'a', b: 2, c: 1, onMyOutputEvent: (val) => { alert(val) } }), app);
+        render(h(VueComponent, { a: 'a', b: 2 }, {
+            default: (props) => h('div', props.a + '')
+        }), app);
     </script>
 </body>
 

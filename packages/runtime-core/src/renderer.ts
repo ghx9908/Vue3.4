@@ -429,6 +429,8 @@ export function createRenderer(options) {
           processComponent(n1, n2, container, anchor)
         }
     }
+    // 组件分成普通组件和函数组件 对于vue3 我们些的普通组建 通过render函数来返回虚拟节点的
+
   }
 
   const unmount = (vnode) => {

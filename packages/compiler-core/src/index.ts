@@ -204,8 +204,5 @@ export function compile(template) {
 
 
   // 3.将ast语法树转化成代码
-  const code = generate(ast)
-  console.log(code)
-  // return generate(ast)
-
+  return generate(ast)
 }
