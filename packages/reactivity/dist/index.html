@@ -12,13 +12,45 @@
   <div id="app"></div>
 
   <script type="module">
-    // vue -> runtime-dom -> runtime-core -> reactivity
-    import { reactive, proxyRefs, toRefs, effect, watch, computed, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-    // import { reactive, proxyRefs, toRefs, effect, watch, watchEffect, computed, ref } from './reactivity.js'
 
-    const obj = { name: 'zs', age: 30 }
+    // import { reactive, effect, watch, ref, computed, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+    import { reactive, effect, watch, watchEffect, computed, ref } from './reactivity.esm.js'
+    const obj = {
+      name: 'zs',
+      age: 18,
+      flag: true
+    }
     const state = reactive(obj)
-    // console.log('obj=== toRow(state)=>', obj === toRow(state))
+    // const state2 = reactive(state1)
+    // console.log('state=>', state1 === state2)
+    // console.log('state=>', state2.name, state1.age)
+
+    effect(() => {
+      console.log("render");
+      document.body.innerHTML = state.flag ? state.name : state.age;
+      // effect(() => {
+      //   console.log('state1.age=>', state1.age)
+      // })
+      // console.log('state1.name=>', state1.name)
+    })
+
+    setTimeout(() => {
+      state.flag = false;
+    }, 1000);
+    setTimeout(() => {
+      console.log("修改name，原则上不更新");
+      state.name = "zf";
+    }, 2000);
+
+    // effect(() => {
+    //   document.body.innerHTML = state1.name
+    // })
+    // setTimeout(() => {
+    //   state1.age++
+    // }, 2000)
+
+
+
   </script>
 </body>
 

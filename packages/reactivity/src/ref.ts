@@ -1,6 +1,6 @@
 import { isObject } from "@vue/shared";
-import { trackEffects, triggerEffects } from "./effect";
-import { reactive } from "./reactivity";
+import { trackEffects, triggerEffects } from "./effect1";
+import { reactive } from "./reactivity1";
 
 export function isRef(value) {
   return !!(value && value.__v_isRef);

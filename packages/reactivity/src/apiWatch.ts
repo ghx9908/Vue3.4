@@ -3,8 +3,8 @@
 // watch 可以传递一个响应式对象，可以监控到对象的变化触发回调
 
 import { isFunction, isObject } from "@vue/shared";
-import { isReactive } from "./reactivity";
-import { ReactiveEffect } from "./effect";
+import { isReactive } from "./reactivity1";
+import { ReactiveEffect } from "./effect1";
 // watch = effect +包装   watchEffect = effect...
 
 // = 深拷贝, seen防止死循环
