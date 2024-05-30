@@ -5,7 +5,30 @@ function effect(fn, option) {
     _effect.run();
   });
   _effect.run();
-  return _effect;
+  if (option) {
+    Object.assign(_effect, option);
+  }
+  const runner = _effect.run.bind(_effect);
+  runner.effect = _effect;
+  return runner;
+}
+function preCleanupEffect(effect2) {
+  effect2._trackId++;
+  effect2._depsLength = 0;
+}
+function cleanupDepEffect(dep, effect2) {
+  dep.delete(effect2);
+  if (dep.size === 0) {
+    dep.cleanup();
+  }
+}
+function postCleanupEffect(effect2) {
+  if (effect2.deps.length > effect2._depsLength) {
+    for (let i = effect2._depsLength; i < effect2.deps.length; i++) {
+      cleanupDepEffect(effect2.deps[i], effect2);
+    }
+    effect2.deps.length = effect2._depsLength;
+  }
 }
 var ReactiveEffect = class {
   constructor(fn, scheduler) {
@@ -15,6 +38,7 @@ var ReactiveEffect = class {
     this.deps = [];
     this._trackId = 0;
     this._depsLength = 0;
+    this._running = 0;
   }
   run() {
     if (!this.active) {
@@ -23,20 +47,36 @@ var ReactiveEffect = class {
     let lastEffect = activeEffect;
     try {
       activeEffect = this;
-      this.fn();
+      this._running++;
+      preCleanupEffect(this);
+      return this.fn();
     } finally {
+      this._running--;
+      postCleanupEffect(this);
       activeEffect = lastEffect;
     }
   }
 };
 function trackEffect(effect2, dep) {
-  dep.set(effect2, effect2._trackId);
-  effect2.deps[effect2._depsLength++] = dep;
+  if (dep.get(effect2) !== effect2._trackId) {
+    dep.set(effect2, effect2._trackId);
+    const oldDep = effect2.deps[effect2._depsLength];
+    if (oldDep !== dep) {
+      if (oldDep) {
+        cleanupDepEffect(oldDep, effect2);
+      }
+      effect2.deps[effect2._depsLength++] = dep;
+    } else {
+      effect2._depsLength++;
+    }
+  }
 }
 function triggerEffects(dep) {
   for (const effect2 of dep.keys()) {
-    if (effect2.scheduler) {
-      effect2.scheduler();
+    if (effect2._running === 0) {
+      if (effect2.scheduler) {
+        effect2.scheduler();
+      }
     }
   }
 }
@@ -86,7 +126,11 @@ var mutanleHandler = {
     if (key === "__v_isReactive" /* IS_REACTIVE */)
       return true;
     track(target, key);
-    return Reflect.get(target, key, receiver);
+    const res = Reflect.get(target, key, receiver);
+    if (isObject(res)) {
+      return reactive(res);
+    }
+    return res;
   },
   set(target, key, value, receiver) {
     const oldValue = target.key;

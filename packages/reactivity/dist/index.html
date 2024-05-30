@@ -18,29 +18,39 @@
     const obj = {
       name: 'zs',
       age: 18,
-      flag: true
+      flag: true,
+      a: {
+        b: 'test'
+      }
+
     }
     const state = reactive(obj)
     // const state2 = reactive(state1)
     // console.log('state=>', state1 === state2)
     // console.log('state=>', state2.name, state1.age)
 
-    effect(() => {
-      console.log("render");
-      document.body.innerHTML = state.flag ? state.name : state.age;
-      // effect(() => {
-      //   console.log('state1.age=>', state1.age)
-      // })
-      // console.log('state1.name=>', state1.name)
-    })
+    // const runner = effect(() => {
+    //   console.log("render");
+    //   document.body.innerHTML = state.flag ? state.name : state.age;
+    //   console.log('state.flag=>', state.flag)
+    //   // effect(() => {
+    //   //   console.log('state1.age=>', state1.age)
+    //   // })
+    //   // console.log('state1.name=>', state1.name)
+    // }, {
+    //   scheduler: function () {
+    //     console.log('自己的渲染逻辑')
+    //     runner()
+    //   }
+    // })
 
-    setTimeout(() => {
-      state.flag = false;
-    }, 1000);
-    setTimeout(() => {
-      console.log("修改name，原则上不更新");
-      state.name = "zf";
-    }, 2000);
+    // setTimeout(() => {
+    //   state.flag = false;
+    // }, 1000);
+    // setTimeout(() => {
+    //   console.log("修改name，原则上不更新");
+    //   state.name = "ls";
+    // }, 2000);
 
     // effect(() => {
     //   document.body.innerHTML = state1.name
@@ -49,6 +59,14 @@
     //   state1.age++
     // }, 2000)
 
+    effect(() => {
+      app.innerHTML = state.a.b
+
+    })
+
+    setTimeout(() => {
+      state.a.b = 'hello'
+    }, 2000)
 
 
   </script>
