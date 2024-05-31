@@ -13,18 +13,26 @@
 
   <script type="module">
 
-    // import { reactive, effect, watch, ref, computed, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-    import { reactive, effect, ref } from './reactivity.esm.js'
+    // import { reactive, toRef, proxyRefs, toRefs, effect, watch, ref, computed, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+    import { reactive, proxyRefs, toRef, toRefs, effect, ref } from './reactivity.esm.js'
 
+    const state = reactive({
+      name: 'zs',
+      age: 14,
+      flag: true
+    })
+    // let flag = toRef(state, 'flag')
+    // console.log('toRefs(state)=>', toRefs(state))
+    // let person = toRefs(state)
+    let person = proxyRefs(toRefs(state))
 
-    const flag = ref(ref)
-
+    console.log('person=>', person)
     effect(() => {
-      app.innerHTML = flag.value ? 'zs' : '18'
+      app.innerHTML = person.flag ? person.name : person.age
     })
 
     setTimeout(() => {
-      flag.value = false
+      person.flag = false
     }, 1000)
 
   </script>

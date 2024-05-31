@@ -166,6 +166,9 @@ function createReactiveObject(target, isReadonly) {
 }
 
 // packages/reactivity/src/ref.ts
+function isRef(value) {
+  return !!(value && value.__v_isRef);
+}
 function ref(value) {
   return createRef(value, false);
 }
@@ -206,16 +209,60 @@ function triggerRefEffect(ref2) {
     triggerEffects(dep);
   }
 }
+var ObjectRefImpl = class {
+  constructor(_object, _key) {
+    this._object = _object;
+    this._key = _key;
+    this.__v_isRef = true;
+  }
+  get value() {
+    return this._object[this._key];
+  }
+  set value(newValue) {
+    this._object[this._key] = newValue;
+  }
+};
+function toRef(object, key) {
+  return new ObjectRefImpl(object, key);
+}
+function toRefs(object, key) {
+  const ret = Array.isArray(object) ? new Array(object.length) : {};
+  for (let key2 in object) {
+    ret[key2] = new ObjectRefImpl(object, key2);
+  }
+  return ret;
+}
+function proxyRefs(objectWithRefs) {
+  return new Proxy(objectWithRefs, {
+    get(target, key, receiver) {
+      let v = Reflect.get(target, key, receiver);
+      return v.__v_isRef ? v.value : v;
+    },
+    set(target, key, value, receiver) {
+      const oldValue = target[key];
+      if (oldValue.__v_isRef) {
+        oldValue.value = value;
+        return true;
+      } else {
+        return Reflect.set(target, key, value, receiver);
+      }
+    }
+  });
+}
 export {
   activeEffect,
   createReactiveObject,
   createRef,
   effect,
+  isRef,
+  proxyRefs,
   reactive,
   ref,
   shallowReactive,
   shallowRef,
   toReactive,
+  toRef,
+  toRefs,
   trackEffect,
   triggerEffects
 };
