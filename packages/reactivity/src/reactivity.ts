@@ -3,6 +3,10 @@ import { ReactiveFlags, mutanleHandler } from "./baseHandlers"
 
 
 
+export function toReactive(object) {
+  return isObject(object) ? reactive(object) : object
+}
+
 const reactiveMap = new WeakMap()
 export function reactive(target: object) {
   return createReactiveObject(target, false)

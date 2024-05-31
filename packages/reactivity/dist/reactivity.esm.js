@@ -72,6 +72,8 @@ function trackEffect(effect2, dep) {
   }
 }
 function triggerEffects(dep) {
+  console.log("xxx1=>", 1);
+  debugger;
   for (const effect2 of dep.keys()) {
     if (effect2._running === 0) {
       if (effect2.scheduler) {
@@ -84,9 +86,6 @@ function triggerEffects(dep) {
 // packages/shared/src/index.ts
 var isObject = (value) => {
   return value !== null && typeof value === "object";
-};
-var isFunction = (value) => {
-  return typeof value === "function";
 };
 
 // packages/reactivity/src/reactiveEffect.ts
@@ -143,6 +142,9 @@ var mutanleHandler = {
 };
 
 // packages/reactivity/src/reactivity.ts
+function toReactive(object) {
+  return isObject(object) ? reactive(object) : object;
+}
 var reactiveMap = /* @__PURE__ */ new WeakMap();
 function reactive(target) {
   return createReactiveObject(target, false);
@@ -163,317 +165,58 @@ function createReactiveObject(target, isReadonly) {
   return proxy;
 }
 
-// packages/reactivity/src/effect1.ts
-var activeEffect2 = void 0;
-function cleanupEffect(effect2) {
-  const { deps } = effect2;
-  for (let i = 0; i < deps.length; i++) {
-    deps[i].delete(effect2);
-  }
-  effect2.deps.length = 0;
-}
-var ReactiveEffect2 = class {
-  constructor(fn, scheduler) {
-    this.fn = fn;
-    this.scheduler = scheduler;
-    this.active = true;
-    this.deps = [];
-    this.parent = void 0;
-  }
-  run() {
-    try {
-      if (!this.active) {
-        return this.fn();
-      }
-      this.parent = activeEffect2;
-      activeEffect2 = this;
-      cleanupEffect(this);
-      return this.fn();
-    } finally {
-      activeEffect2 = this.parent;
-      this.parent = void 0;
-    }
-  }
-  stop() {
-    if (this.active) {
-      cleanupEffect(this);
-      this.active = false;
-    }
-  }
-};
-var targetMap2 = /* @__PURE__ */ new WeakMap();
-function track2(target, type, key) {
-  if (activeEffect2) {
-    let depsMap = targetMap2.get(target);
-    if (!depsMap) {
-      targetMap2.set(target, depsMap = /* @__PURE__ */ new Map());
-    }
-    let dep = depsMap.get(key);
-    if (!dep) {
-      depsMap.set(key, dep = /* @__PURE__ */ new Set());
-    }
-    trackEffects(dep);
-  }
-}
-function trigger2(target, type, key, newValue, oldValue) {
-  const depsMap = targetMap2.get(target);
-  if (!depsMap) {
-    return;
-  }
-  const effects = depsMap.get(key);
-  triggerEffects2(effects);
-}
-function triggerEffects2(effects) {
-  if (effects) {
-    effects = [...effects];
-    effects.forEach((effect2) => {
-      if (activeEffect2 !== effect2) {
-        if (effect2.scheduler) {
-          effect2.scheduler();
-        } else {
-          effect2.run();
-        }
-      }
-    });
-  }
-}
-function trackEffects(dep) {
-  let shouldTrack = !dep.has(activeEffect2);
-  if (shouldTrack) {
-    dep.add(activeEffect2);
-    activeEffect2.deps.push(dep);
-  }
-}
-
 // packages/reactivity/src/ref.ts
-function isRef(value) {
-  return !!(value && value.__v_isRef);
-}
-function toReactive(value) {
-  return isObject(value) ? reactive2(value) : value;
-}
-var RefImpl = class {
-  constructor(rawValue, _shallow) {
-    this.rawValue = rawValue;
-    this._shallow = _shallow;
-    this.dep = /* @__PURE__ */ new Set();
-    this.__v_isRef = true;
-    this._value = _shallow ? rawValue : toReactive(rawValue);
-  }
-  get value() {
-    trackEffects(this.dep);
-    return this._value;
-  }
-  set value(newVal) {
-    if (newVal !== this.rawValue) {
-      this.rawValue = newVal;
-      this._value = this._shallow ? newVal : toReactive(newVal);
-      triggerEffects2(this.dep);
-    }
-  }
-};
-function createRef(rawValue, shallow) {
-  return new RefImpl(rawValue, shallow);
-}
 function ref(value) {
   return createRef(value, false);
 }
 function shallowRef(value) {
   return createRef(value, true);
 }
-var ObjectRefImpl = class {
-  constructor(_object, _key) {
-    this._object = _object;
-    this._key = _key;
-    this.__v_isRef = true;
+function createRef(rawValue, shallow) {
+  return new RefImpl(rawValue, shallow);
+}
+var RefImpl = class {
+  constructor(rawValue, _shallow) {
+    this.rawValue = rawValue;
+    this._shallow = _shallow;
+    this.__Is_Ref = true;
+    this._value = _shallow ? rawValue : toReactive(rawValue);
   }
   get value() {
-    return this._object[this._key];
-  }
-  set value(newVal) {
-    this._object[this._key] = newVal;
-  }
-};
-function toRef(object, key) {
-  return new ObjectRefImpl(object, key);
-}
-function toRefs(object) {
-  const ret = Array.isArray(object) ? new Array(object.length) : {};
-  for (const key in object) {
-    ret[key] = toRef(object, key);
-  }
-  return ret;
-}
-function proxyRefs(objectWithRefs) {
-  return new Proxy(objectWithRefs, {
-    get(target, key, receiver) {
-      let v = Reflect.get(target, key, receiver);
-      return v.__v_isRef ? v.value : v;
-    },
-    set(target, key, value, receiver) {
-      const oldValue = target[key];
-      if (oldValue.__v_isRef) {
-        oldValue.value = value;
-        return true;
-      } else {
-        return Reflect.set(target, key, value, receiver);
-      }
-    }
-  });
-}
-
-// packages/reactivity/src/baseHandlers1.ts
-var muableHandlers = {
-  get(target, key, receiver) {
-    if (key === "__v_isReactive" /* IS_REACTIVE */) {
-      return true;
-    }
-    const res = Reflect.get(target, key, receiver);
-    track2(target, "get", key);
-    if (isRef(target[key])) {
-      return target[key].value;
-    }
-    if (isObject(res)) {
-      return reactive2(res);
-    }
-    return res;
-  },
-  set(target, key, value, receiver) {
-    let oldValue = target[key];
-    const result = Reflect.set(target, key, value, receiver);
-    if (oldValue !== value) {
-      trigger2(target, "set", key, value, oldValue);
-    }
-    return result;
-  }
-};
-
-// packages/reactivity/src/reactivity1.ts
-var reactiveMap2 = /* @__PURE__ */ new WeakMap();
-function reactive2(target) {
-  if (!isObject(target))
-    return target;
-  let existingProxy = reactiveMap2.get(target);
-  if (existingProxy)
-    return existingProxy;
-  if (target["__v_isReactive" /* IS_REACTIVE */]) {
-    return target;
-  }
-  const proxy = new Proxy(target, muableHandlers);
-  reactiveMap2.set(target, proxy);
-  return proxy;
-}
-function isReactive(value) {
-  return value["__v_isReactive" /* IS_REACTIVE */];
-}
-
-// packages/reactivity/src/apiWatch.ts
-function traverse(value, seen = /* @__PURE__ */ new Set()) {
-  if (!isObject(value)) {
-    return value;
-  }
-  if (seen.has(value)) {
-    return value;
-  }
-  seen.add(value);
-  for (const key in value) {
-    traverse(value[key], seen);
-  }
-  return value;
-}
-function watch(source, cb, options) {
-  return dowatch(source, cb, options);
-}
-function watchEffect(source, options) {
-  return dowatch(source, null, options);
-}
-function dowatch(source, cb, options) {
-  let getter;
-  if (isReactive(source)) {
-    getter = () => traverse(source);
-  } else if (isFunction(source)) {
-    getter = source;
-  }
-  let oldVal;
-  let clear;
-  let onCleanup = (fn) => {
-    clear = fn;
-  };
-  const job = () => {
-    if (cb) {
-      if (clear)
-        clear();
-      const newVal = effect2.run();
-      cb(newVal, oldVal, onCleanup);
-      oldVal = newVal;
-    } else {
-      effect2.run();
-    }
-  };
-  const effect2 = new ReactiveEffect2(getter, job);
-  oldVal = effect2.run();
-}
-
-// packages/reactivity/src/computed.ts
-var ComputedRefImpl = class {
-  constructor(getter, setter) {
-    this.setter = setter;
-    this._dirty = true;
-    this.__v_isRef = true;
-    this.effect = new ReactiveEffect2(getter, () => {
-      if (!this._dirty) {
-        this._dirty = true;
-        triggerEffects2(this.dep);
-      }
-    });
-  }
-  get value() {
-    if (activeEffect2) {
-      trackEffects(this.dep || (this.dep = /* @__PURE__ */ new Set()));
-    }
-    if (this._dirty) {
-      this._dirty = false;
-      this._value = this.effect.run();
-    }
+    tarckRefEffect(this);
     return this._value;
   }
   set value(newValue) {
-    this.setter(newValue);
+    if (newValue !== this.rawValue) {
+      this._value = this._shallow ? newValue : toReactive(newValue);
+      this.rawValue = newValue;
+      triggerRefEffect(this);
+    }
   }
 };
-function computed(getterOrOptions) {
-  let getter;
-  let setter;
-  const isGetter = isFunction(getterOrOptions);
-  if (isGetter) {
-    getter = getterOrOptions;
-    setter = () => {
-      console.log("warn");
-    };
-  } else {
-    getter = getterOrOptions.get;
-    setter = getterOrOptions.set;
+function tarckRefEffect(ref2) {
+  if (activeEffect) {
+    trackEffect(activeEffect, ref2.dep = createDep(() => ref2.dep = void 0, ref2._value));
   }
-  return new ComputedRefImpl(getter, setter);
+}
+function triggerRefEffect(ref2) {
+  const dep = ref2.dep;
+  if (dep) {
+    console.log("dep=>", dep);
+    triggerEffects(dep);
+  }
 }
 export {
   activeEffect,
-  computed,
   createReactiveObject,
-  dowatch,
+  createRef,
   effect,
-  isRef,
-  proxyRefs,
   reactive,
   ref,
   shallowReactive,
   shallowRef,
   toReactive,
-  toRef,
-  toRefs,
   trackEffect,
-  triggerEffects,
-  watch,
-  watchEffect
+  triggerEffects
 };
 //# sourceMappingURL=reactivity.esm.js.map

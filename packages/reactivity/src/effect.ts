@@ -65,8 +65,6 @@ class ReactiveEffect {
     } finally {
       this._running--
       postCleanupEffect(this); // 清理依赖
-
-
       activeEffect = lastEffect
 
     }
@@ -98,7 +96,10 @@ export function trackEffect(effect, dep) {
 
 
 
+
 export function triggerEffects(dep) {
+  console.log('xxx1=>', 1)
+  debugger
   for (const effect of dep.keys()) {
     if (effect._running === 0) {
       if (effect.scheduler) {

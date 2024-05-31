@@ -1,7 +1,7 @@
 import { isObject } from "@vue/shared";
 import { ReactiveFlags, reactive } from "./reactivity1";
 import { track, trigger } from "./effect1";
-import { isRef } from "./ref";
+import { isRef } from "./ref1";
 export const muableHandlers: ProxyHandler<object> = {
   // receiver相当于代理对象
   get(target, key, receiver) {
