@@ -1,6 +1,7 @@
 // packages/reactivity/src/effect.ts
 var activeEffect;
 function effect(fn, option) {
+  console.log("1=>", 1);
   const _effect = new ReactiveEffect(fn, () => {
     _effect.run();
   });
@@ -313,4 +314,4 @@ export {
   triggerEffects,
   triggerRefEffect
 };
-//# sourceMappingURL=reactivity.esm.js.map
+//# sourceMappingURL=reactivity.js.map

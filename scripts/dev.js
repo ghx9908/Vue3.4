@@ -16,8 +16,8 @@ const outputFormat = format.startsWith("global") // 输出的格式
 const outfile = resolve(
   // 输出的文件
   __dirname,
-  `../packages/${target}/dist/${target}.${format}.js`
-  // `../packages/${target}/dist/${target}.js`
+  // `../packages/${target}/dist/${target}.${format}.js`
+  `../packages/${target}/dist/${target}.js`
 )
 
 build({
