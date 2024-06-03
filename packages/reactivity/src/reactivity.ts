@@ -1,5 +1,6 @@
 import { isObject } from "@vue/shared"
-import { ReactiveFlags, mutanleHandler } from "./baseHandlers"
+import { mutanleHandler } from "./baseHandlers"
+import { ReactiveFlags } from "./constants"
 
 
 

@@ -1,9 +1,9 @@
 
+import { DirtyLevels } from './constants'
 
 export let activeEffect
 
 export function effect(fn, option?) {
-
   const _effect = new ReactiveEffect(fn, () => {
     _effect.run()
   })
@@ -43,16 +43,28 @@ function postCleanupEffect(effect) {
 
 
 
-class ReactiveEffect {
+export class ReactiveEffect {
   active = true
   deps = []
   _trackId = 0
   _depsLength = 0
   _running = 0
+  _dirtyLevel = DirtyLevels.Dirty;
   // scheduler 如果fn中以来的数据发生变化，则重新执行run 方法
   constructor(public fn, public scheduler) {
   }
+
+  public get dirty() {
+    return this._dirtyLevel === DirtyLevels.Dirty;
+  }
+
+  public set dirty(val) {
+    this._dirtyLevel = val ? DirtyLevels.Dirty : DirtyLevels.NotDirty;
+  }
+
+
   run() {
+    this._dirtyLevel = DirtyLevels.NotDirty; // 运行一次后，脏值变为不脏
     if (!this.active) {
       return this.fn()
     }
@@ -98,9 +110,12 @@ export function trackEffect(effect, dep) {
 
 
 export function triggerEffects(dep) {
-  console.log('xxx1=>', 1)
-  debugger
   for (const effect of dep.keys()) {
+    if (effect._dirtyLevel < DirtyLevels.Dirty) {
+      effect._dirtyLevel = DirtyLevels.Dirty;
+      // 需要差异化开，计算属性只需要修改dirty
+      // effect.trigger();
+    }
     if (effect._running === 0) {
       if (effect.scheduler) {
         effect.scheduler();

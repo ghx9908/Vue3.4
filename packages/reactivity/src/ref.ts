@@ -42,18 +42,15 @@ class RefImpl {
   }
 }
 
-function tarckRefEffect(ref) {
-
-
+export function tarckRefEffect(ref) {
   if (activeEffect) {
     trackEffect(activeEffect, ref.dep = createDep(() => ref.dep = undefined, ref._value))
   }
 }
 
-function triggerRefEffect(ref) {
+export function triggerRefEffect(ref) {
   const dep = ref.dep
   if (dep) {
-    console.log('dep=>', dep)
     triggerEffects(dep)
   }
 }

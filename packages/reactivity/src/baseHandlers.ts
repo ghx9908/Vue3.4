@@ -2,10 +2,9 @@
 import { isObject } from "@vue/shared"
 import { track, trigger } from "./reactiveEffect"
 import { reactive } from "./reactivity"
+import { ReactiveFlags } from "./constants"
 
-export const enum ReactiveFlags { // 对象
-  IS_REACTIVE = "__v_isReactive",
-}
+
 export const mutanleHandler: ProxyHandler<Record<any, any>> = {
   get(target, key, receiver) {
     if (key === ReactiveFlags.IS_REACTIVE) return true
