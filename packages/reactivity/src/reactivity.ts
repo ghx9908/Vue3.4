@@ -31,3 +31,9 @@ export function createReactiveObject(target: object, isReadonly: boolean) {
   return proxy
 }
 
+
+
+export function isReactive(value) {
+
+  return value && value[ReactiveFlags.IS_REACTIVE]
+}

@@ -48,6 +48,13 @@ var ReactiveEffect = class {
   set dirty(val) {
     this._dirtyLevel = val ? 4 /* Dirty */ : 0 /* NotDirty */;
   }
+  stop() {
+    if (this.active) {
+      preCleanupEffect(this);
+      postCleanupEffect(this);
+      this.active = false;
+    }
+  }
   run() {
     this._dirtyLevel = 0 /* NotDirty */;
     if (!this.active) {
@@ -177,6 +184,9 @@ function createReactiveObject(target, isReadonly) {
   reactiveMap.set(target, proxy);
   return proxy;
 }
+function isReactive(value) {
+  return value && value["__v_isReactive" /* IS_REACTIVE */];
+}
 
 // packages/reactivity/src/ref.ts
 function isRef(value) {
@@ -212,7 +222,7 @@ var RefImpl = class {
 };
 function tarckRefEffect(ref2) {
   if (activeEffect) {
-    trackEffect(activeEffect, ref2.dep = createDep(() => ref2.dep = void 0, ref2._value));
+    trackEffect(activeEffect, ref2.dep = ref2.dep || createDep(() => ref2.dep = void 0, ref2._value));
   }
 }
 function triggerRefEffect(ref2) {
@@ -262,6 +272,73 @@ function proxyRefs(objectWithRefs) {
   });
 }
 
+// packages/reactivity/src/apiWatch.ts
+function watch(source, cb, option) {
+  return doWatch(source, cb, option);
+}
+function watchEffect(effect2, option) {
+  return doWatch(effect2, null, option);
+}
+function doWatch(source, cb, { immediate, deep }) {
+  let getter;
+  if (isFunction(source)) {
+    getter = source;
+  } else if (isReactive(source)) {
+    getter = () => traverse(source, deep === false ? 1 : void 0);
+  } else if (isRef(source)) {
+    getter = () => source.value;
+  }
+  let cleanup;
+  function onCleanup(fn) {
+    cleanup = () => {
+      fn();
+      cleanup = void 0;
+    };
+  }
+  const job = () => {
+    if (cb) {
+      if (cleanup) {
+        cleanup();
+      }
+      let newVal = effect2.run();
+      cb(newVal, oldVal, onCleanup);
+      oldVal = newVal;
+    } else {
+      effect2.run();
+    }
+  };
+  const effect2 = new ReactiveEffect(getter, job);
+  const noWatch = () => {
+    effect2.stop();
+  };
+  let oldVal;
+  if (cb) {
+    if (immediate) {
+      job();
+    }
+  } else {
+    oldVal = effect2.run();
+  }
+  return noWatch;
+}
+function traverse(value, depth = Infinity, seen = /* @__PURE__ */ new Set()) {
+  if (depth <= 0) {
+    return value;
+  }
+  if (!isObject(value)) {
+    return value;
+  }
+  if (seen.has(value)) {
+    return value;
+  }
+  depth--;
+  seen.add(value);
+  for (let key in value) {
+    traverse(value[key], depth, seen);
+  }
+  return value;
+}
+
 // packages/reactivity/src/computed.ts
 var ComputedRefImpl = class {
   constructor(getter, setter) {
@@ -300,6 +377,7 @@ export {
   createReactiveObject,
   createRef,
   effect,
+  isReactive,
   isRef,
   proxyRefs,
   reactive,
@@ -312,6 +390,8 @@ export {
   toRefs,
   trackEffect,
   triggerEffects,
-  triggerRefEffect
+  triggerRefEffect,
+  watch,
+  watchEffect
 };
 //# sourceMappingURL=reactivity.js.map

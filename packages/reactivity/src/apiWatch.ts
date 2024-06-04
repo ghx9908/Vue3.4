@@ -1,67 +1,88 @@
-
-// watch api 用法很多，常见写法就是监控一个函数的返回值，根据返回值的变化触发对应的函数
-// watch 可以传递一个响应式对象，可以监控到对象的变化触发回调
-
 import { isFunction, isObject } from "@vue/shared";
-import { isReactive } from "./reactivity1";
-import { ReactiveEffect } from "./effect1";
-// watch = effect +包装   watchEffect = effect...
+import { isReactive } from "./reactivity";
+import { ReactiveEffect } from "./effect";
+import { isRef } from "./ref";
 
-// = 深拷贝, seen防止死循环
-function traverse(value, seen = new Set()) {
-  if (!isObject(value)) {
-    return value;
-  }
-  // 如果已经循环了这个对象，那么在循环会导致死循环
-  if (seen.has(value)) {
-    return value;
-  }
-  seen.add(value);
-  for (const key in value) {
-    traverse(value[key], seen); // 触发属性的hetter
-  }
-  return value;
-}
-
-export function watch(source, cb, options) {
-  return dowatch(source, cb, options);
+export function watch(source, cb, option?) {
+  return doWatch(source, cb, option)
 }
 
 
-export function watchEffect(source, options) {
-  return dowatch(source, null, options);
+export function watchEffect(effect, option) {
+  return doWatch(effect, null, option)
 }
 
-
-export function dowatch(source, cb, options) {
-  // 1）source是一个 响应式对象
-  // 2）source是一个函数
-
-  // effect() + scheduler
+function doWatch(source, cb, { immediate, deep }) {
   let getter;
-  if (isReactive(source)) {
-    getter = () => traverse(source);
-  } else if (isFunction(source)) {
-    getter = source;
+  if (isFunction(source)) {
+    getter = source
+  } else if (isReactive(source)) {
+    getter = () => traverse(source, deep === false ? 1 : undefined)
+  } else if (isRef(source)) {
+    getter = () => source.value
+
   }
-  let oldVal;
-  // 里面的属性就会收集当前的effect
-  // 如果数据变化后会执行对应scheduler方法
-  let clear;
-  let onCleanup = (fn) => {
-    clear = fn;
-  };
+
+  let cleanup;
+  function onCleanup(fn) {
+    cleanup = () => {
+      fn();
+      cleanup = undefined
+    }
+  }
 
   const job = () => {
     if (cb) {
-      if (clear) clear(); // 下次执行的时候将上次的执行一下
-      const newVal = effect.run();
-      cb(newVal, oldVal, onCleanup);
-      oldVal = newVal;
+      if (cleanup) {
+        cleanup();
+      }
+      let newVal = effect.run()
+      cb(newVal, oldVal, onCleanup)
+      oldVal = newVal
     } else {
-      effect.run(); // watchEffect 只需要运行自身就可以了
+      effect.run()
     }
-  };
-  const effect = new ReactiveEffect(getter, job);
-  oldVal = effect.run(); // 会让属性和effect关联在一起
+  }
+
+
+  const effect = new ReactiveEffect(getter, job)
+
+
+  const noWatch = () => {
+    effect.stop()
+  }
+  let oldVal
+  if (cb) {
+
+    if (immediate) {
+      job()
+    }
+  } else {
+    oldVal = effect.run()
+  }
+
+  return noWatch
+
+}
+
+
+function traverse(value, depth = Infinity, seen = new Set()) {
+  if (depth <= 0) {
+    return value
+  }
+  if (!isObject(value)) {
+    return value
+  }
+  if (seen.has(value)) {
+    return value
+  }
+  depth--
+
+  seen.add(value)
+
+  for (let key in value) {
+    traverse(value[key], depth, seen)
+  }
+
+  return value
 }

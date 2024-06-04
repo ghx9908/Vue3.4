@@ -14,30 +14,32 @@
   <script type="module">
 
     // import { reactive, toRef, proxyRefs, toRefs, effect, watch, ref, computed, watchEffect } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-    import { reactive, proxyRefs, toRef, toRefs, effect, ref, computed } from './reactivity.js'
+    import { reactive, proxyRefs, toRef, toRefs, effect, ref, computed, watch, watchEffect } from './reactivity.js'
+
 
     const state = reactive({
       name: 'zs',
-      age: 14,
-      flag: true
+      age: 15
     })
+    watch(() => state.name, (newValue, oldValue, onCleanup) => {
+      // 监测一个响应式值的变化
+      console.log(newValue, oldValue);
 
+      onCleanup(() => {
+        console.log('onCleanup....')
+      })
+    }, {
+      deep: true,
+      immediate: true
+    });
 
-    const fullName = computed(() => {
-      console.log('computed running')
-      return '**' + state.name + '**'
-    })
-    debugger
-    effect(() => {
-      app.innerHTML = fullName.value
-      console.log('fullName.value=>', fullName.value)
-      console.log('fullName.value=>', fullName.value)
-    })
+    // watchEffect(() => {
+    //   console.log('state.name=>', state.name)
+    // })
+
     setTimeout(() => {
       state.name = 'ls'
-    }, 2000);
-
-
+    }, 2000)
   </script>
 </body>
 

@@ -24,6 +24,6 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
-    "vue": "^3.2.47"
+    "vue": "^3.4"
   }
 }

@@ -63,6 +63,14 @@ export class ReactiveEffect {
     this._dirtyLevel = val ? DirtyLevels.Dirty : DirtyLevels.NotDirty;
   }
 
+  stop() {
+    if (this.active) { // 清理掉所有依赖
+      preCleanupEffect(this);
+      postCleanupEffect(this);
+      this.active = false;
+    }
+  }
+
 
   run() {
     this._dirtyLevel = DirtyLevels.NotDirty; // 运行一次后，脏值变为不脏
