@@ -1,8 +1,6 @@
 // packages/runtime-dom/src/nodeOps.ts
 var nodeOps = {
-  insert: (child, parent, anchor) => {
-    parent.insertBefore(child, anchor || null);
-  },
+  insert: (child, parent, anchor) => parent.insertBefore(child, anchor || null),
   remove: (child) => {
     const parent = child.parentNode;
     if (parent) {
@@ -14,68 +12,68 @@ var nodeOps = {
   setText: (node, text) => node.nodeValue = text,
   setElementText: (el, text) => el.textContent = text,
   parentNode: (node) => node.parentNode,
-  nextSibling: (node) => node.nextSibling,
+  nextSibing: (node) => node.nextSibing,
   querySelector: (selector) => document.querySelector(selector)
 };
 
 // packages/runtime-dom/src/patchProp.ts
-var patchProp = (el, key, prevValue, nextValue) => {
+var patchProp = (el, key, preValue, nextValue) => {
   if (key === "class") {
     patchClass(el, nextValue);
   } else if (key === "style") {
-    patchStyle(el, prevValue, nextValue);
+    pathStyle(el, preValue, nextValue);
   } else if (/^on[^a-z]/.test(key)) {
-    patchEvent(el, key, nextValue);
+    debugger;
+    pathEvent(el, key, nextValue);
   } else {
     patchAttr(el, key, nextValue);
   }
 };
 function patchClass(el, value) {
-  if (value == null) {
+  if (value === null) {
     el.removeAttribute("class");
   } else {
-    el.className = value;
+    el.class = value;
   }
 }
-function patchStyle(el, prev, next) {
-  const style = el.style;
-  for (const key in next) {
-    style[key] = next[key];
+function pathStyle(el, pre, next) {
+  for (let key in next) {
+    el.style[key] = next[key];
   }
-  if (prev) {
-    for (const key in prev) {
-      if (next[key] == null) {
-        style[key] = null;
+  if (pre) {
+    for (let key in pre) {
+      if (next[key] === null) {
+        el.style[key] = null;
       }
     }
   }
 }
-function createInvoker(initialValue) {
+var createInvoker = (initiaValue) => {
   const invoker = (e) => invoker.value(e);
-  invoker.value = initialValue;
+  invoker.value = initiaValue;
   return invoker;
-}
-function patchEvent(el, rawName, nextValue) {
+};
+function pathEvent(el, rawName, nextValue) {
   const invokers = el._vei || (el._vei = {});
   const exisitingInvoker = invokers[rawName];
   if (nextValue && exisitingInvoker) {
     exisitingInvoker.value = nextValue;
-  } else {
+  }
+  if (nextValue && !exisitingInvoker) {
     const name = rawName.slice(2).toLowerCase();
-    if (nextValue) {
-      const invoker = invokers[rawName] = createInvoker(nextValue);
-      el.addEventListener(name, invoker);
-    } else if (exisitingInvoker) {
-      el.removeEventListener(name, exisitingInvoker);
-      invokers[rawName] = void 0;
-    }
+    const invoker = invokers[rawName] = createInvoker(nextValue);
+    el.addEventListener(name, invoker);
+  }
+  if (!nextValue && exisitingInvoker) {
+    el.removeEventListener(rawName.slice(2).toLowerCase(), exisitingInvoker);
+    invokers[rawName] = void 0;
   }
 }
-function patchAttr(el, key, value) {
-  if (value == null) {
+function patchAttr(el, key, nextValue) {
+  if (nextValue === null || nextValue === void 0) {
     el.removeAttribute(key);
   } else {
-    el.setAttribute(key, value);
+    el.setAttribute(key, nextValue);
   }
 }
 
@@ -100,7 +98,7 @@ function isSameVNodeType(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key;
 }
 function createVNode(type, props, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : 0;
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
   const vnode = {
     shapeFlag,
     __v_isVNode: true,
@@ -167,13 +165,37 @@ function queueJob(job) {
 }
 
 // packages/reactivity/src/effect.ts
-var activeEffect = void 0;
-function cleanupEffect(effect2) {
-  const { deps } = effect2;
-  for (let i = 0; i < deps.length; i++) {
-    deps[i].delete(effect2);
+var activeEffect;
+function effect(fn, option) {
+  console.log("1=>", 1);
+  const _effect = new ReactiveEffect(fn, () => {
+    _effect.run();
+  });
+  _effect.run();
+  if (option) {
+    Object.assign(_effect, option);
   }
-  effect2.deps.length = 0;
+  const runner = _effect.run.bind(_effect);
+  runner.effect = _effect;
+  return runner;
+}
+function preCleanupEffect(effect2) {
+  effect2._trackId++;
+  effect2._depsLength = 0;
+}
+function cleanupDepEffect(dep, effect2) {
+  dep.delete(effect2);
+  if (dep.size === 0) {
+    dep.cleanup();
+  }
+}
+function postCleanupEffect(effect2) {
+  if (effect2.deps.length > effect2._depsLength) {
+    for (let i = effect2._depsLength; i < effect2.deps.length; i++) {
+      cleanupDepEffect(effect2.deps[i], effect2);
+    }
+    effect2.deps.length = effect2._depsLength;
+  }
 }
 var ReactiveEffect = class {
   constructor(fn, scheduler) {
@@ -181,38 +203,78 @@ var ReactiveEffect = class {
     this.scheduler = scheduler;
     this.active = true;
     this.deps = [];
-    this.parent = void 0;
+    this._trackId = 0;
+    this._depsLength = 0;
+    this._running = 0;
+    this._dirtyLevel = 4 /* Dirty */;
   }
-  run() {
-    try {
-      if (!this.active) {
-        return this.fn();
-      }
-      this.parent = activeEffect;
-      activeEffect = this;
-      cleanupEffect(this);
-      return this.fn();
-    } finally {
-      activeEffect = this.parent;
-      this.parent = void 0;
-    }
+  get dirty() {
+    return this._dirtyLevel === 4 /* Dirty */;
+  }
+  set dirty(val) {
+    this._dirtyLevel = val ? 4 /* Dirty */ : 0 /* NotDirty */;
   }
   stop() {
     if (this.active) {
-      cleanupEffect(this);
+      preCleanupEffect(this);
+      postCleanupEffect(this);
       this.active = false;
     }
   }
+  run() {
+    this._dirtyLevel = 0 /* NotDirty */;
+    if (!this.active) {
+      return this.fn();
+    }
+    let lastEffect = activeEffect;
+    try {
+      activeEffect = this;
+      this._running++;
+      preCleanupEffect(this);
+      return this.fn();
+    } finally {
+      this._running--;
+      postCleanupEffect(this);
+      activeEffect = lastEffect;
+    }
+  }
 };
-function effect(fn, options = {}) {
-  const _effect = new ReactiveEffect(fn, options.scheduler);
-  _effect.run();
-  const runner = _effect.run.bind(_effect);
-  runner.effect = _effect;
-  return runner;
+function trackEffect(effect2, dep) {
+  if (dep.get(effect2) !== effect2._trackId) {
+    dep.set(effect2, effect2._trackId);
+    const oldDep = effect2.deps[effect2._depsLength];
+    if (oldDep !== dep) {
+      if (oldDep) {
+        cleanupDepEffect(oldDep, effect2);
+      }
+      effect2.deps[effect2._depsLength++] = dep;
+    } else {
+      effect2._depsLength++;
+    }
+  }
 }
+function triggerEffects(dep) {
+  for (const effect2 of dep.keys()) {
+    if (effect2._dirtyLevel < 4 /* Dirty */) {
+      effect2._dirtyLevel = 4 /* Dirty */;
+    }
+    if (effect2._running === 0) {
+      if (effect2.scheduler) {
+        effect2.scheduler();
+      }
+    }
+  }
+}
+
+// packages/reactivity/src/reactiveEffect.ts
 var targetMap = /* @__PURE__ */ new WeakMap();
-function track(target, type, key) {
+function createDep(cleanup, key) {
+  const deps = /* @__PURE__ */ new Map();
+  deps.cleanup = cleanup;
+  deps.key = key;
+  return deps;
+}
+function track(target, key) {
   if (activeEffect) {
     let depsMap = targetMap.get(target);
     if (!depsMap) {
@@ -220,76 +282,112 @@ function track(target, type, key) {
     }
     let dep = depsMap.get(key);
     if (!dep) {
-      depsMap.set(key, dep = /* @__PURE__ */ new Set());
+      depsMap.set(key, dep = createDep(() => dep.delete(key), key));
     }
-    trackEffects(dep);
+    trackEffect(activeEffect, dep);
   }
 }
-function trigger(target, type, key, newValue, oldValue) {
+function trigger(target, key, newValue, oldValue) {
   const depsMap = targetMap.get(target);
-  if (!depsMap) {
+  if (!depsMap)
     return;
-  }
-  const effects = depsMap.get(key);
-  triggerEffects(effects);
-}
-function triggerEffects(effects) {
-  if (effects) {
-    effects = [...effects];
-    effects.forEach((effect2) => {
-      if (activeEffect !== effect2) {
-        if (effect2.scheduler) {
-          effect2.scheduler();
-        } else {
-          effect2.run();
-        }
-      }
-    });
+  const dep = depsMap.get(key);
+  if (dep) {
+    triggerEffects(dep);
   }
 }
-function trackEffects(dep) {
-  let shouldTrack = !dep.has(activeEffect);
-  if (shouldTrack) {
-    dep.add(activeEffect);
-    activeEffect.deps.push(dep);
+
+// packages/reactivity/src/baseHandlers.ts
+var mutanleHandler = {
+  get(target, key, receiver) {
+    if (key === "__v_isReactive" /* IS_REACTIVE */)
+      return true;
+    track(target, key);
+    const res = Reflect.get(target, key, receiver);
+    if (isObject(res)) {
+      return reactive(res);
+    }
+    return res;
+  },
+  set(target, key, value, receiver) {
+    const oldValue = target.key;
+    const result = Reflect.set(target, key, value, receiver);
+    if (oldValue !== value) {
+      trigger(target, key, value, oldValue);
+    }
+    return result;
   }
+};
+
+// packages/reactivity/src/reactivity.ts
+function toReactive(object) {
+  return isObject(object) ? reactive(object) : object;
+}
+var reactiveMap = /* @__PURE__ */ new WeakMap();
+function reactive(target) {
+  return createReactiveObject(target, false);
+}
+function shallowReactive(target) {
+  return createReactiveObject(target, true);
+}
+function createReactiveObject(target, isReadonly) {
+  if (target["__v_isReactive" /* IS_REACTIVE */])
+    return target;
+  if (!isObject(target))
+    return target;
+  const exisitingProxy = reactiveMap.get(target);
+  if (exisitingProxy)
+    return exisitingProxy;
+  const proxy = new Proxy(target, mutanleHandler);
+  reactiveMap.set(target, proxy);
+  return proxy;
+}
+function isReactive(value) {
+  return value && value["__v_isReactive" /* IS_REACTIVE */];
 }
 
 // packages/reactivity/src/ref.ts
 function isRef(value) {
   return !!(value && value.__v_isRef);
 }
-function toReactive(value) {
-  return isObject(value) ? reactive(value) : value;
-}
-var RefImpl = class {
-  constructor(rawValue, _shallow) {
-    this.rawValue = rawValue;
-    this._shallow = _shallow;
-    this.dep = /* @__PURE__ */ new Set();
-    this.__v_isRef = true;
-    this._value = _shallow ? rawValue : toReactive(rawValue);
-  }
-  get value() {
-    trackEffects(this.dep);
-    return this._value;
-  }
-  set value(newVal) {
-    if (newVal !== this.rawValue) {
-      this.rawValue = newVal;
-      this._value = this._shallow ? newVal : toReactive(newVal);
-      triggerEffects(this.dep);
-    }
-  }
-};
-function createRef(rawValue, shallow) {
-  return new RefImpl(rawValue, shallow);
-}
 function ref(value) {
   return createRef(value, false);
 }
 function shallowRef(value) {
   return createRef(value, true);
+}
+function createRef(rawValue, shallow) {
+  return new RefImpl(rawValue, shallow);
+}
+var RefImpl = class {
+  constructor(rawValue, _shallow) {
+    this.rawValue = rawValue;
+    this._shallow = _shallow;
+    this.__Is_Ref = true;
+    this._value = _shallow ? rawValue : toReactive(rawValue);
+  }
+  get value() {
+    tarckRefEffect(this);
+    return this._value;
+  }
+  set value(newValue) {
+    if (newValue !== this.rawValue) {
+      this._value = this._shallow ? newValue : toReactive(newValue);
+      this.rawValue = newValue;
+      triggerRefEffect(this);
+    }
+  }
+};
+function tarckRefEffect(ref2) {
+  if (activeEffect) {
+    trackEffect(activeEffect, ref2.dep = ref2.dep || createDep(() => ref2.dep = void 0, ref2._value));
+  }
+}
+function triggerRefEffect(ref2) {
+  const dep = ref2.dep;
+  if (dep) {
+    triggerEffects(dep);
+  }
 }
 var ObjectRefImpl = class {
   constructor(_object, _key) {
@@ -300,17 +398,17 @@ var ObjectRefImpl = class {
   get value() {
     return this._object[this._key];
   }
-  set value(newVal) {
-    this._object[this._key] = newVal;
+  set value(newValue) {
+    this._object[this._key] = newValue;
   }
 };
 function toRef(object, key) {
   return new ObjectRefImpl(object, key);
 }
-function toRefs(object) {
+function toRefs(object, key) {
   const ret = Array.isArray(object) ? new Array(object.length) : {};
-  for (const key in object) {
-    ret[key] = toRef(object, key);
+  for (let key2 in object) {
+    ret[key2] = new ObjectRefImpl(object, key2);
   }
   return ret;
 }
@@ -332,92 +430,35 @@ function proxyRefs(objectWithRefs) {
   });
 }
 
-// packages/reactivity/src/baseHandlers.ts
-var muableHandlers = {
-  get(target, key, receiver) {
-    if (key === "__v_isReactive" /* IS_REACTIVE */) {
-      return true;
-    }
-    const res = Reflect.get(target, key, receiver);
-    track(target, "get", key);
-    if (isRef(target[key])) {
-      return target[key].value;
-    }
-    if (isObject(res)) {
-      return reactive(res);
-    }
-    return res;
-  },
-  set(target, key, value, receiver) {
-    let oldValue = target[key];
-    const result = Reflect.set(target, key, value, receiver);
-    if (oldValue !== value) {
-      trigger(target, "set", key, value, oldValue);
-    }
-    return result;
-  }
-};
-
-// packages/reactivity/src/reactivity.ts
-var ReactiveFlags = /* @__PURE__ */ ((ReactiveFlags2) => {
-  ReactiveFlags2["IS_REACTIVE"] = "__v_isReactive";
-  return ReactiveFlags2;
-})(ReactiveFlags || {});
-var reactiveMap = /* @__PURE__ */ new WeakMap();
-function reactive(target) {
-  if (!isObject(target))
-    return target;
-  let existingProxy = reactiveMap.get(target);
-  if (existingProxy)
-    return existingProxy;
-  if (target["__v_isReactive" /* IS_REACTIVE */]) {
-    return target;
-  }
-  const proxy = new Proxy(target, muableHandlers);
-  reactiveMap.set(target, proxy);
-  return proxy;
-}
-function isReactive(value) {
-  return value["__v_isReactive" /* IS_REACTIVE */];
-}
-
 // packages/reactivity/src/apiWatch.ts
-function traverse(value, seen = /* @__PURE__ */ new Set()) {
-  if (!isObject(value)) {
-    return value;
-  }
-  if (seen.has(value)) {
-    return value;
-  }
-  seen.add(value);
-  for (const key in value) {
-    traverse(value[key], seen);
-  }
-  return value;
+function watch(source, cb, option) {
+  return doWatch(source, cb, option);
 }
-function watch(source, cb, options) {
-  return dowatch(source, cb, options);
+function watchEffect(effect2, option) {
+  return doWatch(effect2, null, option);
 }
-function watchEffect(source, options) {
-  return dowatch(source, null, options);
-}
-function dowatch(source, cb, options) {
+function doWatch(source, cb, { immediate, deep }) {
   let getter;
-  if (isReactive(source)) {
-    getter = () => traverse(source);
-  } else if (isFunction(source)) {
+  if (isFunction(source)) {
     getter = source;
+  } else if (isReactive(source)) {
+    getter = () => traverse(source, deep === false ? 1 : void 0);
+  } else if (isRef(source)) {
+    getter = () => source.value;
   }
-  let oldVal;
-  let clear;
-  let onCleanup = (fn) => {
-    clear = fn;
-  };
+  let cleanup;
+  function onCleanup(fn) {
+    cleanup = () => {
+      fn();
+      cleanup = void 0;
+    };
+  }
   const job = () => {
     if (cb) {
-      if (clear)
-        clear();
-      const newVal = effect2.run();
+      if (cleanup) {
+        cleanup();
+      }
+      let newVal = effect2.run();
       cb(newVal, oldVal, onCleanup);
       oldVal = newVal;
     } else {
@@ -425,29 +466,48 @@ function dowatch(source, cb, options) {
     }
   };
   const effect2 = new ReactiveEffect(getter, job);
-  oldVal = effect2.run();
+  const noWatch = () => {
+    effect2.stop();
+  };
+  let oldVal;
+  if (cb) {
+    if (immediate) {
+      job();
+    }
+  } else {
+    oldVal = effect2.run();
+  }
+  return noWatch;
+}
+function traverse(value, depth = Infinity, seen = /* @__PURE__ */ new Set()) {
+  if (depth <= 0) {
+    return value;
+  }
+  if (!isObject(value)) {
+    return value;
+  }
+  if (seen.has(value)) {
+    return value;
+  }
+  depth--;
+  seen.add(value);
+  for (let key in value) {
+    traverse(value[key], depth, seen);
+  }
+  return value;
 }
 
 // packages/reactivity/src/computed.ts
 var ComputedRefImpl = class {
   constructor(getter, setter) {
+    this.getter = getter;
     this.setter = setter;
-    this._dirty = true;
-    this.__v_isRef = true;
-    this.effect = new ReactiveEffect(getter, () => {
-      if (!this._dirty) {
-        this._dirty = true;
-        triggerEffects(this.dep);
-      }
-    });
+    this.effect = new ReactiveEffect(getter, () => triggerRefEffect(this));
   }
   get value() {
-    if (activeEffect) {
-      trackEffects(this.dep || (this.dep = /* @__PURE__ */ new Set()));
-    }
-    if (this._dirty) {
-      this._dirty = false;
+    if (this.effect.dirty) {
       this._value = this.effect.run();
+      tarckRefEffect(this);
     }
     return this._value;
   }
@@ -458,11 +518,9 @@ var ComputedRefImpl = class {
 function computed(getterOrOptions) {
   let getter;
   let setter;
-  const isGetter = isFunction(getterOrOptions);
-  if (isGetter) {
+  if (isFunction(getterOrOptions)) {
     getter = getterOrOptions;
     setter = () => {
-      console.log("warn");
     };
   } else {
     getter = getterOrOptions.get;
@@ -930,19 +988,19 @@ function createRenderer(options) {
 
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign({ patchProp }, nodeOps);
-var render = (vnode, container) => {
+function render(vnode, container) {
   createRenderer(renderOptions).render(vnode, container);
-};
+}
 export {
   Fragment,
   ReactiveEffect,
-  ReactiveFlags,
   Text,
   activeEffect,
   computed,
+  createReactiveObject,
+  createRef,
   createRenderer,
   createVNode,
-  dowatch,
   effect,
   h,
   isReactive,
@@ -953,15 +1011,17 @@ export {
   reactive,
   ref,
   render,
+  renderOptions,
+  shallowReactive,
   shallowRef,
+  tarckRefEffect,
   toReactive,
   toRef,
   toRefs,
-  track,
-  trackEffects,
-  trigger,
+  trackEffect,
   triggerEffects,
+  triggerRefEffect,
   watch,
   watchEffect
 };
-//# sourceMappingURL=runtime-dom.esm.js.map
+//# sourceMappingURL=runtime-dom.js.map

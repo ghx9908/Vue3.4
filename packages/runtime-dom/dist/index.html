@@ -11,17 +11,19 @@
 <body>
     <div id="app"></div>
     <script type="module">
-        // import { h, render, Text, reactive, toRefs, Fragment } from './runtime-dom.esm.js'
-        import { h, render } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+        import { renderOptions, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
 
-        function VueComponent(props, { slots }) {
-            return slots.default(props)
 
+        import { h, createRenderer } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+
+
+        const render = (vnode, container) => {
+            createRenderer(renderOptions).render(vnode, container)
         }
 
-        render(h(VueComponent, { a: 'a', b: 2 }, {
-            default: (props) => h('div', props.a + '')
-        }), app);
+
+
+        render(h("h1", { class: "class", style: { color: 'red' }, a: 1, onClick: () => console.log('click') }, "hello world"), app);
     </script>
 </body>
 
