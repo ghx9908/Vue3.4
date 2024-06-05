@@ -4,7 +4,6 @@ export const patchProp = (el, key, preValue, nextValue) => {
   } else if (key === 'style') {
     pathStyle(el, preValue, nextValue)
   } else if (/^on[^a-z]/.test(key)) {
-    debugger
     pathEvent(el, key, nextValue)
   }
   else {
