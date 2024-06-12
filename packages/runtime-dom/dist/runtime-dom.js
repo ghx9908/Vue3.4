@@ -21,7 +21,7 @@ var patchProp = (el, key, preValue, nextValue) => {
   if (key === "class") {
     patchClass(el, nextValue);
   } else if (key === "style") {
-    pathStyle(el, preValue, nextValue);
+    patchStyle(el, preValue, nextValue);
   } else if (/^on[^a-z]/.test(key)) {
     pathEvent(el, key, nextValue);
   } else {
@@ -35,16 +35,20 @@ function patchClass(el, value) {
     el.class = value;
   }
 }
-function pathStyle(el, pre, next) {
-  for (let key in next) {
-    el.style[key] = next[key];
-  }
-  if (pre) {
-    for (let key in pre) {
-      if (next[key] === null) {
-        el.style[key] = null;
+function patchStyle(el, pre, next) {
+  if (next) {
+    for (let key in next) {
+      el.style[key] = next[key];
+    }
+    if (pre) {
+      for (let key in pre) {
+        if (next[key] === null) {
+          el.style[key] = null;
+        }
       }
     }
+  } else {
+    el.removeAttribute("style");
   }
 }
 var createInvoker = (initiaValue) => {
@@ -90,6 +94,9 @@ function isString(val) {
 // packages/runtime-core/src/createVNode.ts
 function isVNode(value) {
   return value.__v_isVNode === true;
+}
+function isSameVNodeType(n1, n2) {
+  return n1.type === n2.type && n1.key == n2.key;
 }
 function createVNode(type, props, children = null) {
   const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
@@ -143,7 +150,7 @@ var Fragment = Symbol("Fragment");
 function isVNode2(val) {
   return !!(val && val.__v_isVNode);
 }
-function isSameVNodeType(n1, n2) {
+function isSameVNodeType2(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key;
 }
 function createVNode2(type, props, children = null) {
@@ -187,7 +194,7 @@ function createRenderer(options) {
       patch(null, children[i], container);
     }
   }
-  function mountElement(vnode, container) {
+  function mountElement(vnode, container, anchor) {
     const { type, props, shapeFlag } = vnode;
     let el = vnode.el = hostCreateElement(type);
     if (props) {
@@ -200,16 +207,147 @@ function createRenderer(options) {
     } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
       mountChildren(vnode.children, el);
     }
-    hostInsert(el, container);
+    hostInsert(el, container, anchor);
   }
-  function patch(n1, n2, container) {
+  function patchProps(oldProps, newProps, el) {
+    for (let key in newProps) {
+      hostPatchProp(el, key, oldProps[key], newProps[key]);
+    }
+    for (let key in oldProps) {
+      if (!(key in newProps)) {
+        hostPatchProp(el, key, oldProps[key], newProps[key]);
+      }
+    }
+  }
+  function unmountChildren(children) {
+    for (let i = 0; i < children.length; i++) {
+      unmount(children[i]);
+    }
+  }
+  function patchKeyedChildren(c1, c2, container) {
+    var _a;
+    let i = 0;
+    let e1 = c1.length - 1;
+    let e2 = c2.length - 1;
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i];
+      const n2 = c2[i];
+      if (isSameVNodeType(n1, n2)) {
+        patch(n1, n2, container);
+      } else {
+        break;
+      }
+      i++;
+    }
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1];
+      const n2 = c2[e2];
+      if (isSameVNodeType(n1, n2)) {
+        patch(n1, n2, container);
+      } else {
+        break;
+      }
+      e1--;
+      e2--;
+    }
+    if (i > e1 && i <= e2) {
+      const anchor = (_a = c2[e2 + 1]) == null ? void 0 : _a.el;
+      while (i <= e2) {
+        patch(null, c2[i], container, anchor);
+        i++;
+      }
+    } else if (i > e2 && i <= e1) {
+      while (i <= e1) {
+        unmount(c1[i]);
+        i++;
+      }
+    } else {
+      const s1 = i;
+      const s2 = i;
+      const keyToNewIndexMap = /* @__PURE__ */ new Map();
+      for (i = s2; i <= e2; i++) {
+        const nextChild = c2[i];
+        keyToNewIndexMap.set(nextChild.key, i);
+      }
+      const toBePatched = e2 - s2 + 1;
+      const newIndexToOldIndexMap = new Array(toBePatched);
+      for (i = 0; i < toBePatched; i++)
+        newIndexToOldIndexMap[i] = 0;
+      for (i = s1; i <= e1; i++) {
+        const prevChild = c1[i];
+        let newIndex = keyToNewIndexMap.get(prevChild.key);
+        if (newIndex === void 0) {
+          unmount(prevChild);
+        } else {
+          newIndexToOldIndexMap[newIndex - s2] = i + 1;
+          patch(prevChild, c2[newIndex], container);
+        }
+      }
+      for (i = toBePatched - 1; i >= 0; i--) {
+        const nextIndex = s2 + i;
+        const nextChild = c2[nextIndex];
+        let anchor = nextIndex + 1 < c2.length ? c2[nextIndex + 1].el : null;
+        if (newIndexToOldIndexMap[i] == 0) {
+          patch(null, nextChild, container, anchor);
+        } else {
+          hostInsert(nextChild.el, container, anchor);
+        }
+      }
+    }
+    console.log(i, e1, e2);
+  }
+  const patchChildren = (n1, n2, el) => {
+    let c1 = n1 && n1.children;
+    let c2 = n2.children;
+    let prevShapeFlag = n1.shapeFlag;
+    let shapeFlag = n2.shapeFlag;
+    if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+      if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+        unmountChildren(c1);
+      }
+      if (c1 !== c2) {
+        hostSetElementText(el, c2);
+      }
+    } else {
+      if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          patchKeyedChildren(c1, c2, el);
+        } else {
+          unmountChildren(c1);
+        }
+      } else {
+        if (prevShapeFlag & 8 /* TEXT_CHILDREN */) {
+          hostSetElementText(el, "");
+        }
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          mountChildren(c2, el);
+        }
+      }
+    }
+  };
+  function patchElement(n1, n2) {
+    let el = n2.el = n1.el;
+    const oldProps = n1.props || {};
+    const newProps = n2.props || {};
+    patchProps(oldProps, newProps, el);
+    patchChildren(n1, n2, el);
+  }
+  function processElement(n1, n2, container, anchor) {
+    if (n1 == null) {
+      mountElement(n2, container, anchor);
+    } else {
+      patchElement(n1, n2);
+    }
+  }
+  function patch(n1, n2, container, anchor) {
     if (n1 == n2) {
       return;
     }
-    if (n1 == null) {
-      mountElement(n2, container);
-    } else {
+    if (n1 && !isSameVNodeType(n1, n2)) {
+      unmount(n1);
+      n1 = null;
     }
+    processElement(n1, n2, container, anchor);
   }
   function unmount(vnode) {
     hostRemove(vnode.el);
@@ -613,7 +751,7 @@ export {
   h,
   isReactive,
   isRef,
-  isSameVNodeType,
+  isSameVNodeType2 as isSameVNodeType,
   isVNode2 as isVNode,
   proxyRefs,
   reactive,

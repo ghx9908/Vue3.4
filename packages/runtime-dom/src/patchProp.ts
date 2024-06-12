@@ -2,7 +2,7 @@ export const patchProp = (el, key, preValue, nextValue) => {
   if (key === 'class') {
     patchClass(el, nextValue)
   } else if (key === 'style') {
-    pathStyle(el, preValue, nextValue)
+    patchStyle(el, preValue, nextValue)
   } else if (/^on[^a-z]/.test(key)) {
     pathEvent(el, key, nextValue)
   }
@@ -20,16 +20,22 @@ export function patchClass(el, value) {
     el.class = value
   }
 }
-function pathStyle(el, pre, next) {
-  for (let key in next) {
-    el.style[key] = next[key]
-  }
-  if (pre) {
-    for (let key in pre) {
-      if (next[key] === null) {
-        el.style[key] = null
+function patchStyle(el, pre, next) {
+
+  if (next) {
+    for (let key in next) {
+      el.style[key] = next[key]
+    }
+
+    if (pre) {
+      for (let key in pre) {
+        if (next[key] === null) {
+          el.style[key] = null
+        }
       }
     }
+  } else {
+    el.removeAttribute('style')
   }
 }
 

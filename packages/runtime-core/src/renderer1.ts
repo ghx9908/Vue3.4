@@ -239,7 +239,7 @@ export function createRenderer(options) {
         }
       } else {
         // 旧的为字符或者空  新的为数组或者空
-        patchKeyedChildren(c1, c2, el);
+        // patchKeyedChildren(c1, c2, el);
         // 旧的的是文本  && 新的是数组或者空 移除旧的 挂在新的
         if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
           hostSetElementText(el, "");
