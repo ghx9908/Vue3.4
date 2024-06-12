@@ -176,6 +176,46 @@ function createVNode2(type, props, children = null) {
   return vnode;
 }
 
+// packages/runtime-core/src/seq.ts
+function getSequence(arr) {
+  const result = [0];
+  const len = arr.length;
+  const p = arr.slice(0).fill(-1);
+  let start;
+  let end;
+  let middle;
+  for (let i2 = 0; i2 < len; i2++) {
+    const arrI = arr[i2];
+    if (arrI !== 0) {
+      let resultLastIndex = result[result.length - 1];
+      if (arr[resultLastIndex] < arrI) {
+        result.push(i2);
+        p[i2] = resultLastIndex;
+        continue;
+      }
+      start = 0;
+      end = result.length - 1;
+      while (start < end) {
+        middle = (start + end) / 2 | 0;
+        if (arr[result[middle]] < arrI) {
+          start = middle + 1;
+        } else {
+          end = middle;
+        }
+      }
+      p[i2] = result[start - 1];
+      result[start] = i2;
+    }
+  }
+  let i = result.length;
+  let last = result[i - 1];
+  while (i-- > 0) {
+    result[i] = last;
+    last = p[last];
+  }
+  return result;
+}
+
 // packages/runtime-core/src/renderer.ts
 function createRenderer(options) {
   const {
@@ -283,6 +323,8 @@ function createRenderer(options) {
           patch(prevChild, c2[newIndex], container);
         }
       }
+      let increasingNewIndexSequence = getSequence(newIndexToOldIndexMap);
+      let j = increasingNewIndexSequence.length - 1;
       for (i = toBePatched - 1; i >= 0; i--) {
         const nextIndex = s2 + i;
         const nextChild = c2[nextIndex];
@@ -290,7 +332,11 @@ function createRenderer(options) {
         if (newIndexToOldIndexMap[i] == 0) {
           patch(null, nextChild, container, anchor);
         } else {
-          hostInsert(nextChild.el, container, anchor);
+          if (i != increasingNewIndexSequence[j]) {
+            hostInsert(nextChild.el, container, anchor);
+          } else {
+            j--;
+          }
         }
       }
     }

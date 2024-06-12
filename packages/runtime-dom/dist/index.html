@@ -12,11 +12,7 @@
     <div id="app"></div>
     <script type="module">
         import { h, renderOptions, render, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
-
-
         // import { createRenderer } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
-
-
         // const render = (vnode, container) => {
         //     createRenderer(renderOptions).render(vnode, container)
         // }
@@ -40,6 +36,7 @@
             h('div', { key: 'f', style: { color: '#ddd' } }, 'f'),
             h('div', { key: 'g' }, 'g')
         ])
+        debugger
         const VDom2 = h('div', [
             h('div', { key: 'a' }, 'a1'),
             h('div', { key: 'b', style: { color: 'red' } }, 'b'),

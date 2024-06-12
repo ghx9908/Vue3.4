@@ -1,5 +1,6 @@
 import { ShapeFlags } from "@vue/shared"
 import { isSameVNodeType } from "./createVNode"
+import { getSequence } from "./seq"
 
 export function createRenderer(options) {
   const {
@@ -166,10 +167,9 @@ export function createRenderer(options) {
           patch(prevChild, c2[newIndex], container);
         }
       }
-
-
       //  5.3 move and mount 移动和挂载
-
+      let increasingNewIndexSequence = getSequence(newIndexToOldIndexMap);
+      let j = increasingNewIndexSequence.length - 1; // 取出最后一个人的索引
       for (i = toBePatched - 1; i >= 0; i--) {
         const nextIndex = s2 + i; //[ecdh]   找到h的索引
         const nextChild = c2[nextIndex]
@@ -178,8 +178,12 @@ export function createRenderer(options) {
           // 这是一个新元素 直接创建插入到 当前元素的下一个即可
           patch(null, nextChild, container, anchor);
         } else {
-          // 根据参照物 将节点直接移动过去  所有节点都要移动 （但是有些节点可以不动）
-          hostInsert(nextChild.el, container, anchor);
+
+          if (i != increasingNewIndexSequence[j]) {
+            hostInsert(nextChild.el, container, anchor);//操作当前的d 以d下一个作为参照物插入
+          } else {
+            j--;
+          }
 
         }
       }
