@@ -1,4 +1,4 @@
-import { ShapeFlags, isString } from "@vue/shared";
+import { ShapeFlags, isObject, isString } from "@vue/shared";
 
 export const Text = Symbol("Text");
 export const Fragment = Symbol("Fragment");
@@ -12,7 +12,7 @@ export function isSameVNodeType(n1, n2) {
 }
 export function createVNode(type, props, children = null) {
   // 判断type是否为字符串，如果是，则shapeFlag为元素标志
-  const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : 0;
+  const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : isObject(type) ? ShapeFlags.STATEFUL_COMPONENT : 0;
   // 创建vnode对象
   const vnode = {
     // 标记为虚拟节点

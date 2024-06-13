@@ -3,6 +3,9 @@ export const isObject = (value: unknown): value is Record<any, any> => {
   return value !== null && typeof value === 'object'
 }
 
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+export const hasOwn = (val, key) => hasOwnProperty.call(val, key);
+
 
 export const isFunction = (value) => {
   return typeof value === "function";

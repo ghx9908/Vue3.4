@@ -1,6 +1,10 @@
-import { ShapeFlags } from "@vue/shared"
+import { hasOwn, ShapeFlags } from "@vue/shared"
 import { Fragment, isSameVNodeType, Text } from "./createVNode"
 import { getSequence } from "./seq"
+import { reactive, ReactiveEffect } from "@vue/reactivity"
+import { queueJob } from "./scheduler"
+import { initProps } from "./componentProps"
+import { createComponentInstance, setupComponent } from "./component"
 
 export function createRenderer(options) {
   const {
@@ -268,6 +272,44 @@ export function createRenderer(options) {
     }
   };
 
+  const setupRenderEffect = (instance, container, anchor) => {
+    const { render } = instance;
+    const componentUpdateFn = () => {
+      if (!instance.isMounted) {
+        const subTree = render.call(instance.proxy, instance.proxy)
+        patch(null, subTree, container, anchor)
+        instance.subTree = subTree
+        instance.isMounted = true
+      } else {
+        const subTree = render.call(instance.proxy, instance.proxy)
+        patch(instance.subTree, subTree, container, anchor)
+        instance.subTree = subTree
+      }
+    }
+
+    const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(instance.update));
+    const update = (instance.update = () => effect.run())
+    update()
+
+  }
+
+  const mountComponent = (vnode, container, anchor) => {
+    // 1) 创建实例
+    const instance = (vnode.component = createComponentInstance(vnode));
+    // 2) 给实例赋值
+    setupComponent(instance);
+    // 3) 创建渲染effect及更新
+    setupRenderEffect(instance, container, anchor);
+  }
+
+  const processComponent = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      mountComponent(n2, container, anchor);
+    } else {
+      // 组件更新逻辑
+    }
+  }
+
 
   /**
    *
@@ -279,14 +321,12 @@ export function createRenderer(options) {
     if (n1 == n2) {
       return
     }
-    debugger
     if (n1 && !isSameVNodeType(n1, n2)) {
       // 有n1 是n1和n2不是同一个节点
       unmount(n1)
       n1 = null
     }
     const { type, shapeFlag } = n2;
-    debugger
     switch (type) {
       case Text:
         processText(n1, n2, container); // 处理文本
@@ -297,6 +337,9 @@ export function createRenderer(options) {
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
           processElement(n1, n2, container, anchor); // 之前处理元素的逻辑
+        }
+        else if (shapeFlag & ShapeFlags.COMPONENT) {
+          processComponent(n1, n2, container, anchor);
         }
     }
   }
