@@ -16,42 +16,45 @@
         // const render = (vnode, container) => {
         //     createRenderer(renderOptions).render(vnode, container)
         // }
-        const vnode = h("h1", "test1")
-        const vnode1 = h("h1", "test2")
+        // const vnode = h("h1", "test1")
+        // const vnode1 = h("h1", "test2")
         // const vnode2 = h("h1", { class: 'class1' })
         // const vnode6 = h('div', h('span'))
         // const vnode1 = h("div", [h("h1", "hello"), h("h1", "hello")])
         // const vnode3 = h("h1", { class: "class", style: { color: 'red' }, a: 1, onClick: () => console.log('click') }, "hello world")
-        const vnode4 = h("h1", { class: "class", style: { color: 'red' }, a: 1, c: 1, onClick: () => console.log('click') }, h('span', 'hello '), h('span', 'world'))
-        const vnode5 = h("div", { class: "class", style: { color: 'red' }, a: 1, onClick: () => console.log('click') }, h('span', 'hello '), h('span', 'world'))
-        const vnode6 = h("h1", { class: "class", style: { color: 'blue' }, a: 1, b: 1, onClick: () => console.log('click') }, h('span', 'hello1 '), h('span', 'world1'))
+        // const vnode4 = h("h1", { class: "class", style: { color: 'red' }, a: 1, c: 1, onClick: () => console.log('click') }, h('span', 'hello '), h('span', 'world'))
+        // const vnode5 = h("div", { class: "class", style: { color: 'red' }, a: 1, onClick: () => console.log('click') }, h('span', 'hello '), h('span', 'world'))
+        // const vnode6 = h("h1", { class: "class", style: { color: 'blue' }, a: 1, b: 1, onClick: () => console.log('click') }, h('span', 'hello1 '), h('span', 'world1'))
 
-        const VDom1 = h('div', [
-            h('div', { key: 'a' }, 'a'),
-            h('div', { key: 'b', style: { color: 'blue' } }, 'b'),
-            h('div', { key: 'c' }, 'c'),
-            h('div', { key: 'd' }, 'd'),
-            h('div', { key: 'e' }, 'e'),
-            h('div', { key: 'q' }, 'q'),
-            h('div', { key: 'f', style: { color: '#ddd' } }, 'f'),
-            h('div', { key: 'g' }, 'g')
-        ])
-        debugger
-        const VDom2 = h('div', [
-            h('div', { key: 'a' }, 'a1'),
-            h('div', { key: 'b', style: { color: 'red' } }, 'b'),
-            h('div', { key: 'e' }, 'e'),
-            h('div', { key: 'c', style: { color: 'green' } }, 'cc'),
-            h('div', { key: 'd' }, 'dd'),
-            h('div', { key: 'h' }, 'h'),
-            h('div', { key: 'f' }, 'f1'),
-            h('div', { key: 'm' }, 'm1'),
-            h('div', { key: 'g', style: { color: 'pink' } }, 'g')
-        ])
+        // const VDom1 = h('div', [
+        //     h('div', { key: 'a' }, 'a'),
+        //     h('div', { key: 'b', style: { color: 'blue' } }, 'b'),
+        //     h('div', { key: 'c' }, 'c'),
+        //     h('div', { key: 'd' }, 'd'),
+        //     h('div', { key: 'e' }, 'e'),
+        //     h('div', { key: 'q' }, 'q'),
+        //     h('div', { key: 'f', style: { color: '#ddd' } }, 'f'),
+        //     h('div', { key: 'g' }, 'g')
+        // ])
+        // const VDom2 = h('div', [
+        //     h('div', { key: 'a' }, 'a1'),
+        //     h('div', { key: 'b', style: { color: 'red' } }, 'b'),
+        //     h('div', { key: 'e' }, 'e'),
+        //     h('div', { key: 'c', style: { color: 'green' } }, 'cc'),
+        //     h('div', { key: 'd' }, 'dd'),
+        //     h('div', { key: 'h' }, 'h'),
+        //     h('div', { key: 'f' }, 'f1'),
+        //     h('div', { key: 'm' }, 'm1'),
+        //     h('div', { key: 'g', style: { color: 'pink' } }, 'g')
+        // ])
 
-        render(VDom1, app);
+        const vnode8 = h(Text, "text1")
+        const vnode9 = h(Text, "text2")
+        const vnode10 = h(Fragment, [h(Text, "hello"), h(Text, "world")])
+        const vnode11 = h('div', [h(Text, "hello"), h(Text, "china")])
+        render(vnode10, app);
         setTimeout(() => {
-            render(VDom2, app);
+            render(vnode11, app);
         }, 3000)
 
 

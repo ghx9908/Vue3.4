@@ -1,5 +1,5 @@
 import { ShapeFlags } from "@vue/shared"
-import { isSameVNodeType } from "./createVNode"
+import { Fragment, isSameVNodeType, Text } from "./createVNode"
 import { getSequence } from "./seq"
 
 export function createRenderer(options) {
@@ -249,6 +249,26 @@ export function createRenderer(options) {
     }
   }
 
+  const processText = (n1, n2, container) => {
+    if (n1 == null) {
+      hostInsert((n2.el = hostCreateText(n2.children)), container);
+    } else {
+      const el = (n2.el = n1.el);
+      if (n2.children !== n1.children) {
+        hostSetText(el, n2.children);
+      }
+    }
+  };
+
+  const processFragment = (n1, n2, container) => {
+    if (n1 == null) {
+      mountChildren(n2.children, container);
+    } else {
+      patchChildren(n1, n2, container);
+    }
+  };
+
+
   /**
    *
    * @param n1 老的vnode
@@ -259,15 +279,32 @@ export function createRenderer(options) {
     if (n1 == n2) {
       return
     }
+    debugger
     if (n1 && !isSameVNodeType(n1, n2)) {
       // 有n1 是n1和n2不是同一个节点
       unmount(n1)
       n1 = null
     }
-    processElement(n1, n2, container, anchor)
+    const { type, shapeFlag } = n2;
+    debugger
+    switch (type) {
+      case Text:
+        processText(n1, n2, container); // 处理文本
+        break;
+      case Fragment:
+        processFragment(n1, n2, container); // 处理fragment
+        break;
+      default:
+        if (shapeFlag & ShapeFlags.ELEMENT) {
+          processElement(n1, n2, container, anchor); // 之前处理元素的逻辑
+        }
+    }
   }
 
   function unmount(vnode) {
+    if (vnode.type === Fragment) {
+      return unmountChildren(vnode.children);
+    }
     hostRemove(vnode.el)
   }
 

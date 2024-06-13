@@ -1,5 +1,5 @@
 export * from "./h";
-export * from "./createVNode1";
+export * from "./createVNode";
 
 export * from "./renderer";
 

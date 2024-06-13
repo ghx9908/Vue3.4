@@ -92,6 +92,8 @@ function isString(val) {
 }
 
 // packages/runtime-core/src/createVNode.ts
+var Text = Symbol("Text");
+var Fragment = Symbol("Fragment");
 function isVNode(value) {
   return value.__v_isVNode === true;
 }
@@ -142,38 +144,6 @@ function h(type, propsOrChildern, children) {
     }
     return createVNode(type, propsOrChildern, children);
   }
-}
-
-// packages/runtime-core/src/createVNode1.ts
-var Text = Symbol("Text");
-var Fragment = Symbol("Fragment");
-function isVNode2(val) {
-  return !!(val && val.__v_isVNode);
-}
-function isSameVNodeType2(n1, n2) {
-  return n1.type === n2.type && n1.key === n2.key;
-}
-function createVNode2(type, props, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
-  const vnode = {
-    shapeFlag,
-    __v_isVNode: true,
-    type,
-    props,
-    key: props && props.key,
-    el: null,
-    children
-  };
-  if (children) {
-    let type2 = 0;
-    if (Array.isArray(children)) {
-      type2 = 16 /* ARRAY_CHILDREN */;
-    } else {
-      type2 = 8 /* TEXT_CHILDREN */;
-    }
-    vnode.shapeFlag |= type2;
-  }
-  return vnode;
 }
 
 // packages/runtime-core/src/seq.ts
@@ -385,17 +355,51 @@ function createRenderer(options) {
       patchElement(n1, n2);
     }
   }
+  const processText = (n1, n2, container) => {
+    if (n1 == null) {
+      hostInsert(n2.el = hostCreateText(n2.children), container);
+    } else {
+      const el = n2.el = n1.el;
+      if (n2.children !== n1.children) {
+        hostSetText(el, n2.children);
+      }
+    }
+  };
+  const processFragment = (n1, n2, container) => {
+    if (n1 == null) {
+      mountChildren(n2.children, container);
+    } else {
+      patchChildren(n1, n2, container);
+    }
+  };
   function patch(n1, n2, container, anchor) {
     if (n1 == n2) {
       return;
     }
+    debugger;
     if (n1 && !isSameVNodeType(n1, n2)) {
       unmount(n1);
       n1 = null;
     }
-    processElement(n1, n2, container, anchor);
+    const { type, shapeFlag } = n2;
+    debugger;
+    switch (type) {
+      case Text:
+        processText(n1, n2, container);
+        break;
+      case Fragment:
+        processFragment(n1, n2, container);
+        break;
+      default:
+        if (shapeFlag & 1 /* ELEMENT */) {
+          processElement(n1, n2, container, anchor);
+        }
+    }
   }
   function unmount(vnode) {
+    if (vnode.type === Fragment) {
+      return unmountChildren(vnode.children);
+    }
     hostRemove(vnode.el);
   }
   const render2 = (vnode, container) => {
@@ -792,13 +796,13 @@ export {
   createReactiveObject,
   createRef,
   createRenderer,
-  createVNode2 as createVNode,
+  createVNode,
   effect,
   h,
   isReactive,
   isRef,
-  isSameVNodeType2 as isSameVNodeType,
-  isVNode2 as isVNode,
+  isSameVNodeType,
+  isVNode,
   proxyRefs,
   reactive,
   ref,
