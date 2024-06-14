@@ -11,8 +11,8 @@
 <body>
     <div id="app"></div>
     <script type="module">
-        import { h, renderOptions, render, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
-        // import { render, h } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+        import { h, ref, renderOptions, render, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
+        // import { render, Fragment, h, ref, Text } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
         // const render = (vnode, container) => {
         //     createRenderer(renderOptions).render(vnode, container)
         // }
@@ -58,25 +58,63 @@
         // }, 3000)
 
 
-        const My = {
-            props: { address: String },
-            render() {
-                return h("div", this.address);
-            },
-        };
-        const VueComponent = {
-            data() {
-                return { name: "zs", age: 30, flag: false };
-            },
+        // const My = {
+        //     props: { address: String },
+        //     render() {
+        //         return h("div", this.address);
+        //     },
+        // };
+        // const VueComponent = {
+        //     props: {
+        //         address: String,
+        //     },
+        //     setup(props, ctx) {
+        //         const name = ref("zs");
+        //         console.log('ctx=>', ctx)
+        //         const handleClick = () => {
+        //             ctx.emit("myEvent");
+        //         };
+        //         return () => h("button", { onClick: handleClick }, "点我啊");
+        //         // return {
+        //         //     name,
+        //         //     address: props.address,
+        //         // };
+        //     },
+        //     // render() {
+        //     //     return h(Text, `RENDER${this.address},${this.name}`);
+        //     // },
+        // };
+
+
+        // render(h(VueComponent, {
+        //     address: "回龙观", onMyEvent: () => {
+        //         alert(1000);
+        //     },
+        // }), app)
+
+
+
+        const MyComponent = {
             render() {
                 return h(Fragment, [
-                    h("button", { onClick: () => (this.flag = !this.flag) }, "切换渲染"),
-                    h("div", this.flag ? this.name : this.age),
-                    h(My, { address: this.flag ? "霍营" : "回龙观" }),
+                    h("div", [this.$slots.header()]), // 获取插槽渲染
+                    h("div", [this.$slots.body()]),
+                    h("div", [this.$slots.footer()]),
                 ]);
             },
         };
-        render(h(VueComponent, { a: 1, b: 2, name: 'zs' }), app)
+        const VueComponent = {
+            setup() {
+                return () =>
+                    h(MyComponent, null, {
+                        // 渲染组件时传递对应的插槽属性
+                        header: () => h("p", "头"),
+                        body: () => h("p", "体"),
+                        footer: () => h("p", "尾"),
+                    });
+            },
+        };
+        render(h(VueComponent), app);
 
 
     </script>

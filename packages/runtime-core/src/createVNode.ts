@@ -39,6 +39,9 @@ export function createVNode(type, props, children = null) {
       // 设置type为数组子节点标志
       type = ShapeFlags.ARRAY_CHILDREN;
       // 如果子节点不是数组
+    } else if (isObject(children)) {
+      // 类型是插槽
+      type = ShapeFlags.SLOTS_CHILDREN;
     } else {
       // 将子节点转换为字符串
       children = String(children);

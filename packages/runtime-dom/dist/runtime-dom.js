@@ -92,6 +92,11 @@ var isFunction = (value) => {
 function isString(val) {
   return typeof val === "string";
 }
+var invokeArrayFns = (fns) => {
+  for (let i = 0; i < fns.length; i++) {
+    fns[i]();
+  }
+};
 
 // packages/runtime-core/src/createVNode.ts
 var Text = Symbol("Text");
@@ -117,6 +122,8 @@ function createVNode(type, props, children = null) {
     let type2 = 0;
     if (Array.isArray(children)) {
       type2 = 16 /* ARRAY_CHILDREN */;
+    } else if (isObject(children)) {
+      type2 = 32 /* SLOTS_CHILDREN */;
     } else {
       children = String(children);
       type2 = 8 /* TEXT_CHILDREN */;
@@ -387,7 +394,7 @@ var RefImpl = class {
   constructor(rawValue, _shallow) {
     this.rawValue = rawValue;
     this._shallow = _shallow;
-    this.__Is_Ref = true;
+    this.__v_isRef = true;
     this._value = _shallow ? rawValue : toReactive(rawValue);
   }
   get value() {
@@ -594,6 +601,9 @@ function initProps(instance, rawProps) {
 }
 
 // packages/runtime-core/src/component.ts
+var currentInstance = null;
+var setCurrentInstance = (instance) => currentInstance = instance;
+var unsetCurrentInstance = () => currentInstance = null;
 function createComponentInstance(vnode) {
   const instance = {
     data: null,
@@ -606,20 +616,25 @@ function createComponentInstance(vnode) {
     props: {},
     component: null,
     proxy: null,
-    render: null
+    render: null,
+    setupState: {},
+    slots: null
   };
   return instance;
 }
 var publicPropertiesMap = {
-  $attrs: (i) => i.attrs
+  $attrs: (i) => i.attrs,
+  $slots: (i) => i.slots
 };
 var PublicInstanceProxyHandlers = {
   get(target, key) {
-    const { data, props } = target;
+    const { data, props, setupState } = target;
     if (data && hasOwn(data, key)) {
       return data[key];
     } else if (hasOwn(props, key)) {
       return props[key];
+    } else if (setupState && hasOwn(setupState, key)) {
+      return setupState[key];
     }
     const publicGetter = publicPropertiesMap[key];
     if (publicGetter) {
@@ -627,20 +642,52 @@ var PublicInstanceProxyHandlers = {
     }
   },
   set(target, key, value) {
-    const { data, props } = target;
+    const { data, setupState, props } = target;
     if (data && hasOwn(data, key)) {
       data[key] = value;
       return true;
     } else if (hasOwn(props, key)) {
       console.warn(`Attempting to mutate prop "${key}". Props are readonly.`);
       return false;
+    } else if (setupState && hasOwn(setupState, key)) {
+      setupState[key] = value;
     }
     return true;
   }
 };
+function initSlots(instance, children) {
+  if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+    instance.slots = children;
+  } else {
+    instance.slots = {};
+  }
+}
 function setupComponent(instance) {
-  const { props, type } = instance.vnode;
+  const { props, type, children } = instance.vnode;
   initProps(instance, props);
+  initSlots(instance, children);
+  if (!instance.render) {
+    instance.render = type.render;
+  }
+  let { setup } = type;
+  if (setup) {
+    const setupContext = {
+      attrs: instance.attrs,
+      emit: (event, ...args) => {
+        const eventName = `on${event[0].toUpperCase() + event.slice(1)}`;
+        const handler = instance.vnode.props[eventName];
+        handler && handler(...args);
+      }
+    };
+    setCurrentInstance(instance);
+    const setupResult = setup(instance.props, setupContext);
+    unsetCurrentInstance();
+    if (isFunction(setupResult)) {
+      instance.render = setupResult;
+    } else if (isObject(setupResult)) {
+      instance.setupState = proxyRefs(setupResult);
+    }
+  }
   instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
   const data = type.data;
   if (data) {
@@ -648,7 +695,6 @@ function setupComponent(instance) {
       return console.warn("The data option must be a function.");
     instance.data = reactive(data.call(instance.proxy));
   }
-  instance.render = type.render;
 }
 
 // packages/runtime-core/src/props.ts
@@ -866,24 +912,38 @@ function createRenderer(options) {
   const updateComponentPreRender = (instance, next) => {
     instance.next = null;
     instance.vnode = next;
+    Object.assign(instance.slots, next.children);
     updateProps(instance, instance.props, next.props);
   };
   const setupRenderEffect = (instance, container, anchor) => {
     const { render: render3 } = instance;
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
+        const { bm, m } = instance;
+        if (bm) {
+          invokeArrayFns(bm);
+        }
         const subTree = render3.call(instance.proxy, instance.proxy);
         patch(null, subTree, container, anchor);
         instance.subTree = subTree;
         instance.isMounted = true;
+        if (m) {
+          invokeArrayFns(m);
+        }
       } else {
-        let { next } = instance;
+        let { next, bu, u } = instance;
         if (next) {
           updateComponentPreRender(instance, next);
+        }
+        if (bu) {
+          invokeArrayFns(bu);
         }
         const subTree = render3.call(instance.proxy, instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
+        if (u) {
+          invokeArrayFns(u);
+        }
       }
     };
     const effect2 = new ReactiveEffect(componentUpdateFn, () => queueJob(instance.update));
@@ -943,8 +1003,11 @@ function createRenderer(options) {
     }
   }
   function unmount(vnode) {
+    const { shapeFlag } = vnode;
     if (vnode.type === Fragment) {
       return unmountChildren(vnode.children);
+    } else if (shapeFlag & 6 /* COMPONENT */) {
+      return unmount(vnode.component.subTree);
     }
     hostRemove(vnode.el);
   }

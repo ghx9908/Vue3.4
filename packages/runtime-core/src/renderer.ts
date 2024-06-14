@@ -1,4 +1,4 @@
-import { hasOwn, ShapeFlags } from "@vue/shared"
+import { hasOwn, invokeArrayFns, ShapeFlags } from "@vue/shared"
 import { Fragment, isSameVNodeType, Text } from "./createVNode"
 import { getSequence } from "./seq"
 import { reactive, ReactiveEffect } from "@vue/reactivity"
@@ -270,25 +270,45 @@ export function createRenderer(options) {
   const updateComponentPreRender = (instance, next) => {
     instance.next = null;
     instance.vnode = next;
+    Object.assign(instance.slots, next.children); // 渲染前要更新插槽
     updateProps(instance, instance.props, next.props);
   }
 
   const setupRenderEffect = (instance, container, anchor) => {
     const { render } = instance;
     const componentUpdateFn = () => {
+
       if (!instance.isMounted) {
+        const { bm, m } = instance;
+        if (bm) {
+          // beforeMount
+          invokeArrayFns(bm);
+        }
         const subTree = render.call(instance.proxy, instance.proxy)
         patch(null, subTree, container, anchor)
         instance.subTree = subTree
         instance.isMounted = true
+        if (m) {
+          // mounted
+          invokeArrayFns(m);
+        }
       } else {
-        let { next } = instance;
+        let { next, bu, u } = instance;
         if (next) {
           updateComponentPreRender(instance, next);
+        }
+        if (bu) {
+          // beforeUpdate
+          invokeArrayFns(bu);
         }
         const subTree = render.call(instance.proxy, instance.proxy)
         patch(instance.subTree, subTree, container, anchor)
         instance.subTree = subTree
+        if (u) {
+          // updated
+          invokeArrayFns(u);
+        }
+
       }
     }
 
@@ -374,9 +394,14 @@ export function createRenderer(options) {
   }
 
   function unmount(vnode) {
+    const { shapeFlag } = vnode;
     if (vnode.type === Fragment) {
       return unmountChildren(vnode.children);
+    } else if (shapeFlag & ShapeFlags.COMPONENT) {
+      // 组件那么移除
+      return unmount(vnode.component.subTree); // 移除组件
     }
+
     hostRemove(vnode.el)
   }
 

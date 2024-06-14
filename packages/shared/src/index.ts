@@ -29,3 +29,9 @@ export const enum ShapeFlags {
   COMPONENT_KEPT_ALIVE = 1 << 9,
   COMPONENT = ShapeFlags.STATEFUL_COMPONENT | ShapeFlags.FUNCTIONAL_COMPONENT,
 }
+
+export const invokeArrayFns = (fns) => {
+  for (let i = 0; i < fns.length; i++) {
+    fns[i](); // 调用钩子方法
+  }
+};

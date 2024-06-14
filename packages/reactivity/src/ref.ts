@@ -22,7 +22,7 @@ export function createRef(rawValue, shallow) {
 
 class RefImpl {
   public _value
-  public __Is_Ref = true
+  public __v_isRef = true
   public dep
 
   constructor(public rawValue, public _shallow) {
