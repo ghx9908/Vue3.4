@@ -5,6 +5,7 @@ import { reactive, ReactiveEffect } from "@vue/reactivity"
 import { queueJob } from "./scheduler"
 import { initProps } from "./componentProps"
 import { createComponentInstance, setupComponent } from "./component"
+import { hasPropsChanged, updateProps } from "./props"
 
 export function createRenderer(options) {
   const {
@@ -193,11 +194,6 @@ export function createRenderer(options) {
       }
 
     }
-
-
-
-
-    console.log(i, e1, e2)
   }
   const patchChildren = (n1, n2, el) => {
     let c1 = n1 && n1.children
@@ -271,6 +267,11 @@ export function createRenderer(options) {
       patchChildren(n1, n2, container);
     }
   };
+  const updateComponentPreRender = (instance, next) => {
+    instance.next = null;
+    instance.vnode = next;
+    updateProps(instance, instance.props, next.props);
+  }
 
   const setupRenderEffect = (instance, container, anchor) => {
     const { render } = instance;
@@ -281,6 +282,10 @@ export function createRenderer(options) {
         instance.subTree = subTree
         instance.isMounted = true
       } else {
+        let { next } = instance;
+        if (next) {
+          updateComponentPreRender(instance, next);
+        }
         const subTree = render.call(instance.proxy, instance.proxy)
         patch(instance.subTree, subTree, container, anchor)
         instance.subTree = subTree
@@ -302,11 +307,35 @@ export function createRenderer(options) {
     setupRenderEffect(instance, container, anchor);
   }
 
+
+
+  const shouldUpdateComponent = (n1, n2) => {
+    const { props: prevProps, children: prevChildren } = n1;
+    const { props: nextProps, children: nextChildren } = n2;
+    if (prevChildren || nextChildren) return true;
+
+    if (prevProps === nextProps) return false;
+    return hasPropsChanged(prevProps, nextProps);
+
+
+  }
+
+
+  const updateComponent = (n1, n2) => {
+    const instance = (n2.component = n1.component);
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2; // 将新的虚拟节点放到next属性上
+      instance.update(); // 属性变化手动调用更新方法
+    }
+
+  }
   const processComponent = (n1, n2, container, anchor) => {
     if (n1 == null) {
       mountComponent(n2, container, anchor);
     } else {
       // 组件更新逻辑
+      // 组件更新逻辑
+      updateComponent(n1, n2);
     }
   }
 

@@ -647,7 +647,34 @@ function setupComponent(instance) {
     if (!isFunction(data))
       return console.warn("The data option must be a function.");
     instance.data = reactive(data.call(instance.proxy));
-    instance.render = type.render;
+  }
+  instance.render = type.render;
+}
+
+// packages/runtime-core/src/props.ts
+var hasPropsChanged = (prevProps = {}, nextProps = {}) => {
+  const nextKeys = Object.keys(nextProps);
+  if (nextKeys.length !== Object.keys(prevProps).length) {
+    return true;
+  }
+  for (let i = 0; i < nextKeys.length; i++) {
+    const key = nextKeys[i];
+    if (nextProps[key] !== prevProps[key]) {
+      return true;
+    }
+  }
+  return false;
+};
+function updateProps(instance, prevProps, nextProps) {
+  if (hasPropsChanged(prevProps, nextProps)) {
+    for (const key in nextProps) {
+      instance.props[key] = nextProps[key];
+    }
+    for (const key in instance.props) {
+      if (!(key in nextProps)) {
+        delete instance.props[key];
+      }
+    }
   }
 }
 
@@ -775,7 +802,6 @@ function createRenderer(options) {
         }
       }
     }
-    console.log(i, e1, e2);
   }
   const patchChildren = (n1, n2, el) => {
     let c1 = n1 && n1.children;
@@ -837,6 +863,11 @@ function createRenderer(options) {
       patchChildren(n1, n2, container);
     }
   };
+  const updateComponentPreRender = (instance, next) => {
+    instance.next = null;
+    instance.vnode = next;
+    updateProps(instance, instance.props, next.props);
+  };
   const setupRenderEffect = (instance, container, anchor) => {
     const { render: render3 } = instance;
     const componentUpdateFn = () => {
@@ -846,6 +877,10 @@ function createRenderer(options) {
         instance.subTree = subTree;
         instance.isMounted = true;
       } else {
+        let { next } = instance;
+        if (next) {
+          updateComponentPreRender(instance, next);
+        }
         const subTree = render3.call(instance.proxy, instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
@@ -860,10 +895,27 @@ function createRenderer(options) {
     setupComponent(instance);
     setupRenderEffect(instance, container, anchor);
   };
+  const shouldUpdateComponent = (n1, n2) => {
+    const { props: prevProps, children: prevChildren } = n1;
+    const { props: nextProps, children: nextChildren } = n2;
+    if (prevChildren || nextChildren)
+      return true;
+    if (prevProps === nextProps)
+      return false;
+    return hasPropsChanged(prevProps, nextProps);
+  };
+  const updateComponent = (n1, n2) => {
+    const instance = n2.component = n1.component;
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2;
+      instance.update();
+    }
+  };
   const processComponent = (n1, n2, container, anchor) => {
     if (n1 == null) {
       mountComponent(n2, container, anchor);
     } else {
+      updateComponent(n1, n2);
     }
   };
   function patch(n1, n2, container, anchor) {

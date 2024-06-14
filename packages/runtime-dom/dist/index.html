@@ -57,26 +57,25 @@
         //     render(vnode11, app);
         // }, 3000)
 
+
+        const My = {
+            props: { address: String },
+            render() {
+                return h("div", this.address);
+            },
+        };
         const VueComponent = {
             data() {
-                return {
-                    age: 22
-                }
+                return { name: "zs", age: 30, flag: false };
             },
-            props: {
-                name: String
+            render() {
+                return h(Fragment, [
+                    h("button", { onClick: () => (this.flag = !this.flag) }, "切换渲染"),
+                    h("div", this.flag ? this.name : this.age),
+                    h(My, { address: this.flag ? "霍营" : "回龙观" }),
+                ]);
             },
-
-            render(proxy) {
-                console.log('render~~~',)
-                return h('div', {
-                    onClick: () => {
-                        this.age++,
-                            this.age++
-                    }
-                }, `age: ${this.age}, name: ${this.name}, a:${this.$attrs.a}`)
-            }
-        }
+        };
         render(h(VueComponent, { a: 1, b: 2, name: 'zs' }), app)
 
 

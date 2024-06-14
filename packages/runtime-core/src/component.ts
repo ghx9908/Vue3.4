@@ -61,6 +61,6 @@ export function setupComponent(instance) {
     if (!isFunction(data))
       return console.warn("The data option must be a function.");
     instance.data = reactive(data.call(instance.proxy));
-    instance.render = type.render;
   }
+  instance.render = type.render;
 }
