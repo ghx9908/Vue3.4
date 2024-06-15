@@ -276,8 +276,8 @@ export function createRenderer(options) {
 
   const setupRenderEffect = (instance, container, anchor) => {
     const { render } = instance;
-    const componentUpdateFn = () => {
 
+    const componentUpdateFn = () => {
       if (!instance.isMounted) {
         const { bm, m } = instance;
         if (bm) {

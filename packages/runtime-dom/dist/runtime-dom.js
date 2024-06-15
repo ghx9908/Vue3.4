@@ -1026,6 +1026,32 @@ function createRenderer(options) {
   };
 }
 
+// packages/runtime-core/src/apiLifecycle.ts
+var LifecycleHooks = /* @__PURE__ */ ((LifecycleHooks2) => {
+  LifecycleHooks2["BEFORE_MOUNT"] = "bm";
+  LifecycleHooks2["MOUNTED"] = "m";
+  LifecycleHooks2["BEFORE_UPDATE"] = "bu";
+  LifecycleHooks2["UPDATED"] = "u";
+  return LifecycleHooks2;
+})(LifecycleHooks || {});
+function createHook(type) {
+  return (hook, target = currentInstance) => {
+    if (target) {
+      const hooks = target[type] || (target[type] = []);
+      const wrappedHook = () => {
+        setCurrentInstance(target);
+        hook.call(target);
+        setCurrentInstance(null);
+      };
+      hooks.push(wrappedHook);
+    }
+  };
+}
+var onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
+var onMounted = createHook("m" /* MOUNTED */);
+var onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);
+var onUpdated = createHook("u" /* UPDATED */);
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign({ patchProp }, nodeOps);
 function render(vnode, container) {
@@ -1033,6 +1059,7 @@ function render(vnode, container) {
 }
 export {
   Fragment,
+  LifecycleHooks,
   ReactiveEffect,
   Text,
   activeEffect,
@@ -1047,6 +1074,10 @@ export {
   isRef,
   isSameVNodeType,
   isVNode,
+  onBeforeMount,
+  onBeforeUpdate,
+  onMounted,
+  onUpdated,
   proxyRefs,
   reactive,
   ref,

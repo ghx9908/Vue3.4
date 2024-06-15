@@ -10,10 +10,10 @@ let person = {
 }
 const proxyPerson = new Proxy(person, {
   get(target, key, receiver) {
-    // console.log("获取" + key)
+    console.log("获取" + key)
     // return target[key]
     //为了解决this问题，增加一层映射
-    return Reflect.get(target, key, receiver)
+    return Reflect.get(target, key)
   },
   set(target, key, value, receiver) {
     console.log("通知页面" + key + "改变了")
@@ -21,5 +21,6 @@ const proxyPerson = new Proxy(person, {
     return Reflect.set(target, key, value, receiver)
   },
 })
-proxyPerson.aliasName
-proxyPerson.aliasName = "ghx"
+console.log("=proxyPerson.aliasName>", proxyPerson.aliasName)
+
+proxyPerson.name = "ghx"

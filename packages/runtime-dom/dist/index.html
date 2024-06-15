@@ -11,8 +11,8 @@
 <body>
     <div id="app"></div>
     <script type="module">
-        import { h, ref, renderOptions, render, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
-        // import { render, Fragment, h, ref, Text } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+        import { h, ref, onUpdated, onMounted, renderOptions, render, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
+        // import { render, Fragment, onUpdated, onMounted, h, ref, Text } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
         // const render = (vnode, container) => {
         //     createRenderer(renderOptions).render(vnode, container)
         // }
@@ -104,14 +104,25 @@
             },
         };
         const VueComponent = {
+
             setup() {
+                const name = ref("zs");
+                onMounted(() => {
+
+                })
+                onMounted(() => {
+
+                })
+                onUpdated(() => {
+                    console.log('3=>', 3)
+                })
                 return () =>
-                    h(MyComponent, null, {
-                        // 渲染组件时传递对应的插槽属性
-                        header: () => h("p", "头"),
-                        body: () => h("p", "体"),
-                        footer: () => h("p", "尾"),
-                    });
+                    h("p", {
+                        onClick: () => {
+                            console.log('1=>', 1)
+                            name.value = 'ls'
+                        }
+                    }, name.value)
             },
         };
         render(h(VueComponent), app);
