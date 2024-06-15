@@ -108,7 +108,7 @@ function isSameVNodeType(n1, n2) {
   return n1.type === n2.type && n1.key == n2.key;
 }
 function createVNode(type, props, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : 0;
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
   const vnode = {
     __v_isVNode: true,
     type,
@@ -598,6 +598,9 @@ function initProps(instance, rawProps) {
   }
   instance.props = reactive(props);
   instance.attrs = attrs;
+  if (instance.vnode.shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
+    instance.props = attrs;
+  }
 }
 
 // packages/runtime-core/src/component.ts
@@ -725,6 +728,14 @@ function updateProps(instance, prevProps, nextProps) {
 }
 
 // packages/runtime-core/src/renderer.ts
+function renderComponentRoot(instance) {
+  let { render: render2, proxy, vnode, props } = instance;
+  if (vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */) {
+    return render2.call(proxy, proxy);
+  } else {
+    return vnode.type(props);
+  }
+}
 function createRenderer(options) {
   const {
     insert: hostInsert,
@@ -923,7 +934,7 @@ function createRenderer(options) {
         if (bm) {
           invokeArrayFns(bm);
         }
-        const subTree = render3.call(instance.proxy, instance.proxy);
+        const subTree = renderComponentRoot(instance);
         patch(null, subTree, container, anchor);
         instance.subTree = subTree;
         instance.isMounted = true;
@@ -938,7 +949,7 @@ function createRenderer(options) {
         if (bu) {
           invokeArrayFns(bu);
         }
-        const subTree = render3.call(instance.proxy, instance.proxy);
+        const subTree = renderComponentRoot(instance);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
         if (u) {
@@ -1082,6 +1093,7 @@ export {
   reactive,
   ref,
   render,
+  renderComponentRoot,
   renderOptions,
   shallowReactive,
   shallowRef,

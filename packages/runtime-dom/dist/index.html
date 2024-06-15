@@ -94,38 +94,47 @@
 
 
 
-        const MyComponent = {
-            render() {
-                return h(Fragment, [
-                    h("div", [this.$slots.header()]), // 获取插槽渲染
-                    h("div", [this.$slots.body()]),
-                    h("div", [this.$slots.footer()]),
-                ]);
-            },
+        // const MyComponent = {
+        //     render() {
+        //         return h(Fragment, [
+        //             h("div", [this.$slots.header()]), // 获取插槽渲染
+        //             h("div", [this.$slots.body()]),
+        //             h("div", [this.$slots.footer()]),
+        //         ]);
+        //     },
+        // };
+        // const VueComponent = {
+
+        //     setup() {
+        //         const name = ref("zs");
+        //         onMounted(() => {
+
+        //         })
+        //         onMounted(() => {
+
+        //         })
+        //         onUpdated(() => {
+        //             console.log('3=>', 3)
+        //         })
+        //         return () =>
+        //             h("p", {
+        //                 onClick: () => {
+        //                     console.log('1=>', 1)
+        //                     name.value = 'ls'
+        //                 }
+        //             }, name.value)
+        //     },
+        // };
+        // render(h(VueComponent), app);
+
+
+
+
+        const functionalComponent = (props) => {
+            return h("div", "hello" + props.name);
         };
-        const VueComponent = {
+        render(h(functionalComponent, { name: "zs" }), app);
 
-            setup() {
-                const name = ref("zs");
-                onMounted(() => {
-
-                })
-                onMounted(() => {
-
-                })
-                onUpdated(() => {
-                    console.log('3=>', 3)
-                })
-                return () =>
-                    h("p", {
-                        onClick: () => {
-                            console.log('1=>', 1)
-                            name.value = 'ls'
-                        }
-                    }, name.value)
-            },
-        };
-        render(h(VueComponent), app);
 
 
     </script>

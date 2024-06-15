@@ -7,6 +7,14 @@ import { initProps } from "./componentProps"
 import { createComponentInstance, setupComponent } from "./component"
 import { hasPropsChanged, updateProps } from "./props"
 
+export function renderComponentRoot(instance) {
+  let { render, proxy, vnode, props } = instance;
+  if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+    return render.call(proxy, proxy);
+  } else {
+    return vnode.type(props); // 函数式组件直接调用即可
+  }
+}
 export function createRenderer(options) {
   const {
     insert: hostInsert,
@@ -274,6 +282,9 @@ export function createRenderer(options) {
     updateProps(instance, instance.props, next.props);
   }
 
+
+
+
   const setupRenderEffect = (instance, container, anchor) => {
     const { render } = instance;
 
@@ -284,7 +295,7 @@ export function createRenderer(options) {
           // beforeMount
           invokeArrayFns(bm);
         }
-        const subTree = render.call(instance.proxy, instance.proxy)
+        const subTree = renderComponentRoot(instance);
         patch(null, subTree, container, anchor)
         instance.subTree = subTree
         instance.isMounted = true
@@ -301,7 +312,7 @@ export function createRenderer(options) {
           // beforeUpdate
           invokeArrayFns(bu);
         }
-        const subTree = render.call(instance.proxy, instance.proxy)
+        const subTree = renderComponentRoot(instance);
         patch(instance.subTree, subTree, container, anchor)
         instance.subTree = subTree
         if (u) {
