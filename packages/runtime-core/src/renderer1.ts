@@ -345,10 +345,10 @@ export function createRenderer(options) {
     const update = (instance.update = effect.run.bind(effect));
     update();
   }
-  function mountComponent(vnode, container, anchor) {
+  function mountComponent(vnode, container, anchor, parnetComponent) {
 
     // 1) 创建实例
-    const instance = vnode.component = createComponentInstance(vnode);
+    const instance = vnode.component = createComponentInstance(vnode, parnetComponent);
 
     // 2) 给实例赋值
     setupComponent(instance)
@@ -393,17 +393,17 @@ export function createRenderer(options) {
       instance.update();
     }
   };
-  const processComponent = (n1, n2, container, anchor) => {
+  const processComponent = (n1, n2, container, anchor, parnetComponent) => {
     if (n1 == null) {
-      mountComponent(n2, container, anchor);
+      mountComponent(n2, container, anchor, parnetComponent);
     } else {
       // 组件更新逻辑
-      updateComponent(n1, n2, container, anchor); // 组件的属性变化了,或者插槽变化了
+      updateComponent(n1, n2, container, anchor, parnetComponent); // 组件的属性变化了,或者插槽变化了
     }
   }
 
   // 元素的渲染
-  const patch = (n1, n2, container, anchor = null) => {
+  const patch = (n1, n2, container, anchor = null, parnetComponent = null) => {
     // 初始化和diff算法都在这里喲
     if (n1 == n2) {
       return
@@ -426,7 +426,7 @@ export function createRenderer(options) {
         if (shapeFlag & ShapeFlags.ELEMENT) {
           processElement(n1, n2, container, anchor); // 之前处理元素的逻辑
         } else if (shapeFlag & ShapeFlags.COMPONENT) { // 组建的渲染
-          processComponent(n1, n2, container, anchor)
+          processComponent(n1, n2, container, anchor, parnetComponent)
         }
     }
     // 组件分成普通组件和函数组件 对于vue3 我们些的普通组建 通过render函数来返回虚拟节点的

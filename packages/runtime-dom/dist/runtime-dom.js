@@ -607,7 +607,7 @@ function initProps(instance, rawProps) {
 var currentInstance = null;
 var setCurrentInstance = (instance) => currentInstance = instance;
 var unsetCurrentInstance = () => currentInstance = null;
-function createComponentInstance(vnode) {
+function createComponentInstance(vnode, parent) {
   const instance = {
     data: null,
     vnode,
@@ -617,11 +617,13 @@ function createComponentInstance(vnode) {
     propsOptions: vnode.type.props,
     attrs: {},
     props: {},
+    parent,
     component: null,
     proxy: null,
     render: null,
     setupState: {},
-    slots: null
+    slots: null,
+    provides: parent ? parent.provides : /* @__PURE__ */ Object.create(null)
   };
   return instance;
 }
@@ -748,12 +750,12 @@ function createRenderer(options) {
     parentNode: hostParentNode,
     nextSibling: hostNextSibling
   } = options;
-  function mountChildren(children, container) {
+  function mountChildren(children, container, anchor, parentComponent) {
     for (let i = 0; i < children.length; i++) {
-      patch(null, children[i], container);
+      patch(null, children[i], container, anchor, parentComponent);
     }
   }
-  function mountElement(vnode, container, anchor) {
+  function mountElement(vnode, container, anchor, parentComponent) {
     const { type, props, shapeFlag } = vnode;
     let el = vnode.el = hostCreateElement(type);
     if (props) {
@@ -764,7 +766,7 @@ function createRenderer(options) {
     if (shapeFlag & 8 /* TEXT_CHILDREN */) {
       hostSetElementText(el, vnode.children);
     } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-      mountChildren(vnode.children, el);
+      mountChildren(vnode.children, el, null, parentComponent);
     }
     hostInsert(el, container, anchor);
   }
@@ -860,7 +862,7 @@ function createRenderer(options) {
       }
     }
   }
-  const patchChildren = (n1, n2, el) => {
+  const patchChildren = (n1, n2, el, anchor, parentComponent) => {
     let c1 = n1 && n1.children;
     let c2 = n2.children;
     let prevShapeFlag = n1.shapeFlag;
@@ -884,23 +886,23 @@ function createRenderer(options) {
           hostSetElementText(el, "");
         }
         if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-          mountChildren(c2, el);
+          mountChildren(c2, el, anchor, parentComponent);
         }
       }
     }
   };
-  function patchElement(n1, n2) {
+  function patchElement(n1, n2, anchor, parentComponent) {
     let el = n2.el = n1.el;
     const oldProps = n1.props || {};
     const newProps = n2.props || {};
     patchProps(oldProps, newProps, el);
-    patchChildren(n1, n2, el);
+    patchChildren(n1, n2, el, anchor, parentComponent);
   }
-  function processElement(n1, n2, container, anchor) {
+  function processElement(n1, n2, container, anchor, parentComponent) {
     if (n1 == null) {
-      mountElement(n2, container, anchor);
+      mountElement(n2, container, anchor, parentComponent);
     } else {
-      patchElement(n1, n2);
+      patchElement(n1, n2, anchor, parentComponent);
     }
   }
   const processText = (n1, n2, container) => {
@@ -913,11 +915,11 @@ function createRenderer(options) {
       }
     }
   };
-  const processFragment = (n1, n2, container) => {
+  const processFragment = (n1, n2, container, parentComponent) => {
     if (n1 == null) {
-      mountChildren(n2.children, container);
+      mountChildren(n2.children, container, null, parentComponent);
     } else {
-      patchChildren(n1, n2, container);
+      patchChildren(n1, n2, container, null, parentComponent);
     }
   };
   const updateComponentPreRender = (instance, next) => {
@@ -926,8 +928,7 @@ function createRenderer(options) {
     Object.assign(instance.slots, next.children);
     updateProps(instance, instance.props, next.props);
   };
-  const setupRenderEffect = (instance, container, anchor) => {
-    const { render: render3 } = instance;
+  const setupRenderEffect = (instance, container, anchor, parentComponentr) => {
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
         const { bm, m } = instance;
@@ -935,7 +936,7 @@ function createRenderer(options) {
           invokeArrayFns(bm);
         }
         const subTree = renderComponentRoot(instance);
-        patch(null, subTree, container, anchor);
+        patch(null, subTree, container, anchor, instance);
         instance.subTree = subTree;
         instance.isMounted = true;
         if (m) {
@@ -950,7 +951,7 @@ function createRenderer(options) {
           invokeArrayFns(bu);
         }
         const subTree = renderComponentRoot(instance);
-        patch(instance.subTree, subTree, container, anchor);
+        patch(instance.subTree, subTree, container, anchor, instance);
         instance.subTree = subTree;
         if (u) {
           invokeArrayFns(u);
@@ -961,10 +962,10 @@ function createRenderer(options) {
     const update = instance.update = () => effect2.run();
     update();
   };
-  const mountComponent = (vnode, container, anchor) => {
-    const instance = vnode.component = createComponentInstance(vnode);
+  const mountComponent = (vnode, container, anchor, parentComponent) => {
+    const instance = vnode.component = createComponentInstance(vnode, parentComponent);
     setupComponent(instance);
-    setupRenderEffect(instance, container, anchor);
+    setupRenderEffect(instance, container, anchor, parentComponent);
   };
   const shouldUpdateComponent = (n1, n2) => {
     const { props: prevProps, children: prevChildren } = n1;
@@ -982,14 +983,14 @@ function createRenderer(options) {
       instance.update();
     }
   };
-  const processComponent = (n1, n2, container, anchor) => {
+  const processComponent = (n1, n2, container, anchor, parentComponent) => {
     if (n1 == null) {
-      mountComponent(n2, container, anchor);
+      mountComponent(n2, container, anchor, parentComponent);
     } else {
       updateComponent(n1, n2);
     }
   };
-  function patch(n1, n2, container, anchor) {
+  function patch(n1, n2, container, anchor = null, parentComponent = null) {
     if (n1 == n2) {
       return;
     }
@@ -1003,13 +1004,13 @@ function createRenderer(options) {
         processText(n1, n2, container);
         break;
       case Fragment:
-        processFragment(n1, n2, container);
+        processFragment(n1, n2, container, parentComponent);
         break;
       default:
         if (shapeFlag & 1 /* ELEMENT */) {
-          processElement(n1, n2, container, anchor);
+          processElement(n1, n2, container, anchor, parentComponent);
         } else if (shapeFlag & 6 /* COMPONENT */) {
-          processComponent(n1, n2, container, anchor);
+          processComponent(n1, n2, container, anchor, parentComponent);
         }
     }
   }
@@ -1063,6 +1064,28 @@ var onMounted = createHook("m" /* MOUNTED */);
 var onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);
 var onUpdated = createHook("u" /* UPDATED */);
 
+// packages/runtime-core/src/apiInject.ts
+function inject(key, defaultValue) {
+  if (!currentInstance)
+    return;
+  const provides = currentInstance.parent.provides;
+  if (provides && key in provides) {
+    return provides[key];
+  } else if (arguments.length > 1) {
+    return defaultValue;
+  }
+}
+function provide(key, value) {
+  if (!currentInstance)
+    return;
+  let provides = currentInstance.provides;
+  const parentProvides = currentInstance.parent && currentInstance.parent.provides;
+  if (parentProvides === provides) {
+    provides = currentInstance.provides = Object.create(parentProvides);
+  }
+  provides[key] = value;
+}
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign({ patchProp }, nodeOps);
 function render(vnode, container) {
@@ -1081,6 +1104,7 @@ export {
   createVNode,
   effect,
   h,
+  inject,
   isReactive,
   isRef,
   isSameVNodeType,
@@ -1089,6 +1113,7 @@ export {
   onBeforeUpdate,
   onMounted,
   onUpdated,
+  provide,
   proxyRefs,
   reactive,
   ref,

@@ -11,8 +11,8 @@
 <body>
     <div id="app"></div>
     <script type="module">
-        import { h, ref, onUpdated, onMounted, renderOptions, render, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
-        // import { render, Fragment, onUpdated, onMounted, h, ref, Text } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+        import { h, ref, provide, inject, onUpdated, onMounted, renderOptions, render, Text, reactive, toRefs, Fragment } from './runtime-dom.js'
+        //import { render, provide, inject, Fragment, onUpdated, onMounted, h, ref, Text } from '/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
         // const render = (vnode, container) => {
         //     createRenderer(renderOptions).render(vnode, container)
         // }
@@ -94,46 +94,43 @@
 
 
 
-        // const MyComponent = {
-        //     render() {
-        //         return h(Fragment, [
-        //             h("div", [this.$slots.header()]), // 获取插槽渲染
-        //             h("div", [this.$slots.body()]),
-        //             h("div", [this.$slots.footer()]),
-        //         ]);
-        //     },
-        // };
-        // const VueComponent = {
-
-        //     setup() {
-        //         const name = ref("zs");
-        //         onMounted(() => {
-
-        //         })
-        //         onMounted(() => {
-
-        //         })
-        //         onUpdated(() => {
-        //             console.log('3=>', 3)
-        //         })
-        //         return () =>
-        //             h("p", {
-        //                 onClick: () => {
-        //                     console.log('1=>', 1)
-        //                     name.value = 'ls'
-        //                 }
-        //             }, name.value)
-        //     },
-        // };
-        // render(h(VueComponent), app);
-
-
-
-
-        const functionalComponent = (props) => {
-            return h("div", "hello" + props.name);
+        const MyComponent = {
+            setup() {
+                const name = inject("name");
+                const age = ref(12)
+                return { name };
+            },
+            render() {
+                return h("div", this.name);
+            },
         };
-        render(h(functionalComponent, { name: "zs" }), app);
+        const VueComponent = {
+
+            setup() {
+                const name = ref("zs");
+                provide("name", name);
+                setTimeout(() => {
+                    name.value = "jw";
+                }, 1000);
+
+                return () =>
+                    h(MyComponent)
+            },
+        };
+
+
+
+
+
+        render(h(VueComponent), app);
+
+
+
+
+        // const functionalComponent = (props) => {
+        //     return h("div", "hello" + props.name);
+        // };
+        // render(h(functionalComponent, { name: "zs" }), app);
 
 
 

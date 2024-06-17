@@ -5,7 +5,7 @@ export let currentInstance = null;
 export const setCurrentInstance = (instance) => (currentInstance = instance);
 export const getCurrentInstance = () => currentInstance;
 export const unsetCurrentInstance = () => (currentInstance = null);
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
   const instance = {
     data: null, // 组件的状态
     vnode: vnode,
@@ -15,11 +15,13 @@ export function createComponentInstance(vnode) {
     propsOptions: vnode.type.props,
     attrs: {},
     props: {},
+    parent,
     component: null,
     proxy: null,
     render: null,
     setupState: {},
     slots: null, // 初始化插槽属性
+    provides: parent ? parent.provides : Object.create(null),
   };
   return instance;
 }
