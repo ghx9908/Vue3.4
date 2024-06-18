@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "node scripts/dev.js",
-    "start": "node scripts/dev.js runtime-dom -f esm",
+    "start": "node scripts/dev.js compiler-core -f esm",
     "build": "node scripts/build.js"
   },
   "keywords": [],

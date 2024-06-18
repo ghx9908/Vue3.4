@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/index.ts"],
+  "sourcesContent": ["\n\n\nfunction createParseContext(context) {\n  return {\n    line: 1,\n    coumn: 1,\n    source: context,\n    originalSource: context,\n\n  }\n}\n\n\nfunction isEnd(context) {\n  const source = context.source\n  return !source\n}\nfunction parseChildren(context) {\n\n  const nodes = []\n\n  while (!isEnd) {\n    let node;\n\n    const s = context.source\n    if (s.startsWith('{{')) {\n      //\u5904\u7406\u8868\u8FBE\u5F0F\n    }\n    if (s.startsWith(\"<\")) {\n      //\u5904\u7406\u6807\u7B7E\n    }\n\n    if (!node) {\n\n\n    }\n\n  }\n  return nodes\n\n\n}\n\nexport function parse(template) {\n  const context = createParseContext(template)\n  return parseChildren(context)\n}\n\n\nexport function compile(template) {\n  const ast = parse(template)\n  return ast\n}\n"],
+  "mappings": ";AAGA,SAAS,mBAAmB,SAAS;AACnC,SAAO;AAAA,IACL,MAAM;AAAA,IACN,OAAO;AAAA,IACP,QAAQ;AAAA,IACR,gBAAgB;AAAA,EAElB;AACF;AAGA,SAAS,MAAM,SAAS;AACtB,QAAM,SAAS,QAAQ;AACvB,SAAO,CAAC;AACV;AACA,SAAS,cAAc,SAAS;AAE9B,QAAM,QAAQ,CAAC;AAEf,SAAO,CAAC,OAAO;AACb,QAAI;AAEJ,UAAM,IAAI,QAAQ;AAClB,QAAI,EAAE,WAAW,IAAI,GAAG;AAAA,IAExB;AACA,QAAI,EAAE,WAAW,GAAG,GAAG;AAAA,IAEvB;AAEA,QAAI,CAAC,MAAM;AAAA,IAGX;AAAA,EAEF;AACA,SAAO;AAGT;AAEO,SAAS,MAAM,UAAU;AAC9B,QAAM,UAAU,mBAAmB,QAAQ;AAC3C,SAAO,cAAc,OAAO;AAC9B;AAGO,SAAS,QAAQ,UAAU;AAChC,QAAM,MAAM,MAAM,QAAQ;AAC1B,SAAO;AACT;",
+  "names": []
+}

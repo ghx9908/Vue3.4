@@ -13,7 +13,7 @@
         // vue / compiler-dom (指令)
 
         // import { compile } from '../../../node_modules/@vue/compiler-dom/dist/compiler-dom.esm-browser.js'
-        import { compile } from './compiler-core.esm.js'
+        import { compile } from './compiler-core.js'
 
         // 1）我们需要将html语法进行抽象语法树的转化。 类似于虚拟dom
         // 2) 抽象语法树是对语法的描述，会描述语法  ast
@@ -25,7 +25,7 @@
         // createElement('div',_toDisplayString(name) + 30)
 
         // 多个空格浏览器只能解析出一个来
-        console.log(compile(`<div>123</div><div>123</div>`))
+        console.log(compile(`123<div>123</div><div>123</div>`))
     </script>
 </body>
 
