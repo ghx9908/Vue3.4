@@ -28,7 +28,8 @@ export function createVNode(type, props, children = null) {
     // 子节点
     children,
     // 节点形状标志
-    shapeFlag
+    shapeFlag,
+    ref: props && props.ref, // 提取ref
   }
   // 如果有子节点
   if (children) {

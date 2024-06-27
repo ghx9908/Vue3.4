@@ -4,7 +4,6 @@ import { DirtyLevels } from './constants'
 export let activeEffect
 
 export function effect(fn, option?) {
-  console.log('1=>', 1)
   const _effect = new ReactiveEffect(fn, () => {
     _effect.run()
   })

@@ -369,6 +369,16 @@ export function createRenderer(options) {
     }
   }
 
+  function setRef(rawRef, vnode) {
+    const refValue =
+      vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+        ? vnode.component.exposed || vnode.component!.proxy
+        : vnode.el;
+
+    if (rawRef) {
+      rawRef.value = refValue;
+    }
+  }
 
   /**
    *
@@ -385,7 +395,7 @@ export function createRenderer(options) {
       unmount(n1)
       n1 = null
     }
-    const { type, shapeFlag } = n2;
+    const { type, shapeFlag, ref } = n2;
     switch (type) {
       case Text:
         processText(n1, n2, container); // 处理文本
@@ -400,6 +410,10 @@ export function createRenderer(options) {
         else if (shapeFlag & ShapeFlags.COMPONENT) {
           processComponent(n1, n2, container, anchor, parentComponent);
         }
+    }
+    // set ref
+    if (ref != null && parentComponent) {
+      setRef(ref, n2)
     }
   }
 
